@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['SB2TmainBeta2.py'],
-             pathex=['D:\\coding\\onedirSB2Tool'],
+             pathex=['D:\\coding\\git\\SB2Tool'],
              binaries=[],
              datas=[],
              hiddenimports=[],
@@ -26,7 +26,7 @@ exe = EXE(pyz,
           bootloader_ignore_signals=False,
           strip=False,
           upx=True,
-          console=False , icon='D:\\coding\\SB2Tool\\favicon.ico')
+          console=False , icon='D:\\coding\\git\\SB2Tool\\favicon.ico')
 coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,
