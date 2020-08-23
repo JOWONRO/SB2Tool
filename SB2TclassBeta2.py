@@ -4,9 +4,9 @@ import pythoncom
 from PyQt5.QtWidgets import (
     QMessageBox,
     QDialog,
-    QPushButton, 
-    QLabel, 
-    QVBoxLayout, 
+    QPushButton,
+    QLabel,
+    QVBoxLayout,
     QHBoxLayout,
     QGridLayout,
     QLineEdit,
@@ -26,42 +26,43 @@ import keyboard
 from threading import Thread
 
 
-
 class TextLine(QPushButton):
     """메인 텍스트 라인을 담당하는 버튼 클래스"""
+
     def __init__(self, parent, num, mode, txt):
         super().__init__()
         self.num = num  # 텍스트 라인 인덱스
         self.parent = parent
         self.mode = mode    # 주석인지 기본 버튼인지 구분
         self.txt = txt
-        self.pasted = False # 붙여넣기 흔적용 플래그
+        self.pasted = False  # 붙여넣기 흔적용 플래그
 
         self.clicked.connect(self.CopyPasteEvent)
         self.SetLine()
-    
+
     def SetLine(self):
         """모드에 따라 텍스트 라인을 세팅하는 함수"""
         if self.mode:   # 기본 버튼 모드 처리
             self.setText(self.txt)
             self.setCheckable(True)
-            if not self.pasted: # 붙여넣기 이력이 있으면 흔적도 그대로 재현
-                self.setStyleSheet( " QPushButton {border: none; text-align: left; padding: 10px;} "
-                                    " QPushButton:checked {background-color: yellow;} "
-                                    " QPushButton:hover {background-color: #ffff84;} " )
+            if not self.pasted:  # 붙여넣기 이력이 있으면 흔적도 그대로 재현
+                self.setStyleSheet(
+                    " QPushButton {border: none; text-align: left; padding: 10px;} "
+                    " QPushButton:checked {background-color: yellow;} "
+                    " QPushButton:hover {background-color: #ffff84;} ")
             else:
-                self.setStyleSheet( " QPushButton {border: none; text-align: left; padding: 10px; background-color: #f9f9f9;} "
-                                    " QPushButton:checked {background-color: yellow;} "
-                                    " QPushButton:hover {background-color: #ffff84;} ")
+                self.setStyleSheet(
+                    " QPushButton {border: none; text-align: left; padding: 10px; background-color: #f9f9f9;} "
+                    " QPushButton:checked {background-color: yellow;} "
+                    " QPushButton:hover {background-color: #ffff84;} ")
         else:   # 주석 처리
             if self.txt[0] == '/' or self.txt[0] == '`':
                 self.setText(self.txt[1:])
             else:
                 self.setText(self.txt)
             self.setCheckable(False)
-            self.setStyleSheet( 
-                " QPushButton {border: none; text-align: left; background-color: #E2E2E2; padding: 5px 10px;} "
-                )
+            self.setStyleSheet(
+                " QPushButton {border: none; text-align: left; background-color: #E2E2E2; padding: 5px 10px;} ")
 
     def WhatNum(self) -> int:
         """해당 텍스트 라인 인덱스를 반환하는 함수"""
@@ -70,7 +71,7 @@ class TextLine(QPushButton):
     def WhatMode(self) -> int:
         """해당 텍스트 라인의 모드를 반환하는 함수"""
         return self.mode
-        
+
     def WhatText(self) -> str:
         """해당 텍스트 라인의 텍스트를 반환하는 함수"""
         return self.txt
@@ -117,7 +118,6 @@ class TextLine(QPushButton):
         """텍스트 수정 창 생성하는 함수"""
         dialog = TextEditDialog(self)
 
-
     def CopyText(self, parent):
         """텍스트 라인 복사하는 함수\n
         소괄호 제외 복사, 큰 따옴표 제외 복사, 작은 따옴표 제외 복사 기능 포함"""
@@ -145,7 +145,9 @@ class TextLine(QPushButton):
 
     def AutoScroll(self, parent):
         """텍스트 클릭, 혹은 텍스트 선택 변경 시 보기 편하게 자동으로 스크롤 해주는 함수"""
-        if (self.num > 0 and self.num < 4) or (self.num >= len(self.parent.btn) - 4 and self.num < len(self.parent.btn) - 1):
+        if (self.num > 0 and self.num < 4) or
+        (self.num >= len(self.parent.btn) - 4 and
+         self.num < len(self.parent.btn) - 1):
             self.parent.scroll.ensureWidgetVisible(self.parent.btn[self.num - 1], 0, 0)
             self.parent.scroll.ensureWidgetVisible(self.parent.btn[self.num + 1], 0, 0)
         elif self.num >= 4 and self.num < len(self.parent.btn) - 4:
@@ -164,8 +166,7 @@ class TextLine(QPushButton):
                 if i != self.num:
                     if self.parent.btn[i].isChecked():
                         self.parent.btn[i].toggle()
-        self.parent.hbar.setValue(self.parent.hbar.minimum())   # 이렇게 좌로 스크롤 안 해주면 수평 스크롤이 자꾸 중앙으로 간다
-        
+        self.parent.hbar.setValue(self.parent.hbar.minimum())  # 이렇게 좌로 스크롤 안 해주면 수평 스크롤이 자꾸 중앙으로 간다
 
     def PasteText(self, parent):
         """기본 모드와 자동 모드 시 적용되는 붙여넣기 함수"""
@@ -175,7 +176,7 @@ class TextLine(QPushButton):
         hotkey('ctrl', 'v')
         self.toggle()
         time.sleep(.1)  # 이렇게 안 해주면 PS 모드 동시 사용 시 다음 라인이 복붙되는 현상 발생
-        
+
         if self.parent.pasteCtrlEnter:  # 포토샵 한정 자동 레이어 닫기 여부
             try:
                 psApp = win32com.client.GetActiveObject("Photoshop.Application")
@@ -183,7 +184,7 @@ class TextLine(QPushButton):
             except:
                 pass
 
-        if self.parent.PsAutoStartAction.isChecked():   # PS 모드 동시 사용 시 다음 라인 자동 복사
+        if self.parent.PsAutoStartAction.isChecked():  # PS 모드 동시 사용 시 다음 라인 자동 복사
             self.parent.NextLineCopy()
         # self.parent.resetRecordAction.setEnabled(True)
         self.parent.resetRecord.setEnabled(True)
@@ -211,32 +212,34 @@ class TextLine(QPushButton):
     def SetTraceTextLine(self, parent): 
         """텍스트 라인 색상 바꾸는 함수 (흔적 남기기)"""
         self.ChangePasted(True)
-        self.parent.btn[self.parent.lineCnt].setStyleSheet( " QPushButton {border: none; text-align: left; padding: 10px; background-color: #ffda9f;} "
-                                                            " QPushButton:checked {background-color: yellow;} "
-                                                            " QPushButton:hover {background-color: #ffff84;} " )
-        if self.parent.lineCntBack != -1:
-            self.parent.btn[self.parent.lineCntBack].setStyleSheet( " QPushButton {border: none; text-align: left; padding: 10px; background-color: #f9f9f9;} "
-                                                                    " QPushButton:checked {background-color: yellow;} "
-                                                                    " QPushButton:hover {background-color: #ffff84;} ")
-        self.parent.lineCntBack = self.parent.lineCnt
+        self.parent.btn[self.parent.lineCnt].setStyleSheet(
+            " QPushButton {border: none; text-align: left; padding: 10px; background-color: #ffda9f;} "
+            " QPushButton:checked {background-color: yellow;} "
+            " QPushButton:hover {background-color: #ffff84;} ")
 
+        if self.parent.lineCntBack != -1:
+            self.parent.btn[self.parent.lineCntBack].setStyleSheet(
+                " QPushButton {border: none; text-align: left; padding: 10px; background-color: #f9f9f9;} "
+                " QPushButton:checked {background-color: yellow;} "
+                " QPushButton:hover {background-color: #ffff84;} ")
+        self.parent.lineCntBack = self.parent.lineCnt
 
     def CopyPasteEvent(self, parent):
         """텍스트 라인 클릭 시 실행되는 함수\n
         기본 모드 시 복사만, 자동 모드 시 붙여넣기까지"""
         if self.mode:
-            if self.parent.AutoStartAction.isChecked(): # 자동 모드일 때
+            if self.parent.AutoStartAction.isChecked():  # 자동 모드일 때
                 self.CopyText(self.parent)
                 self.PasteText(self.parent)
-            else: # 기본 모드일 때. 클릭 시 복사만 진행
+            else:  # 기본 모드일 때. 클릭 시 복사만 진행
                 self.CopyText(self.parent)
         else:
             pass
 
 
-
 class TextEditDialog(QDialog):
     """텍스트 라인의 텍스트 수정 창 생성 함수"""
+
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
@@ -260,7 +263,7 @@ class TextEditDialog(QDialog):
 
         self.setLayout(vbox)
         self.setWindowTitle('텍스트 수정')
-        x, y = position() # 창 위치 조정
+        x, y = position()  # 창 위치 조정
         self.move(x - 50, y - 50)
         self.exec()
 
@@ -273,12 +276,12 @@ class TextEditDialog(QDialog):
         self.close()
 
 
-
 class AdvSettingsDialog(QDialog):
     """
     고급 설정창 클래스\n
     복사 기능, 붙여넣기 기능, UI 기능 조정 가능
     """
+
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
@@ -299,7 +302,7 @@ class AdvSettingsDialog(QDialog):
 
         self.setWindowTitle('고급 설정')
         self.setWindowIcon(QIcon(self.parent.AdvSetIcon))
-        x, y = self.parent.pos().x(), self.parent.pos().y() # 창 위치 조정
+        x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 50, y + 150)
         self.exec()
 
@@ -371,7 +374,7 @@ class AdvSettingsDialog(QDialog):
         groupbox.setLayout(vbox)
 
         return groupbox
-    
+
     def setExceptBrackets(self):
         """소괄호 제외 복사 기능 활성화 여부 함수"""
         if self.copycheckbox1.isChecked():
@@ -379,7 +382,7 @@ class AdvSettingsDialog(QDialog):
         else:
             self.parent.exceptbrackets = 0
         self.parent.advSettingsList[0] = self.parent.exceptbrackets
-    
+
     def setExceptDQuotation(self):
         """큰 따옴표 제외 복사 기능 활성화 여부 함수"""
         if self.copycheckbox2.isChecked():
@@ -421,18 +424,18 @@ class AdvSettingsDialog(QDialog):
         self.parent.advSettingsList[5] = self.parent.commentWithP
 
 
-
 class TextFindDialog(QDialog):
     """특정 텍스트 찾기 창 클래스"""
+    
     def __init__(self, parent):
         super().__init__()
-        QDialog.__init__(self, None, Qt.WindowStaysOnTopHint)   # 항상 최상위 고정
+        QDialog.__init__(self, None, Qt.WindowStaysOnTopHint)  # 항상 최상위 고정
         self.parent = parent
-        
+
         self.index = 0
         self.findlist = []
         self.listlen = 0
-        x, y = self.parent.pos().x(), self.parent.pos().y() # 창 위치 조정
+        x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 50, y + 150)
 
         self.textedit = QLineEdit()
@@ -454,10 +457,9 @@ class TextFindDialog(QDialog):
 
         self.setWindowTitle('텍스트 찾기')
         self.setWindowIcon(QIcon(self.parent.FindIcon))
-        self.show() # 이게 있어야 찾기 창 띄워 놓고 딴 짓 가능
+        self.show()  # 이게 있어야 찾기 창 띄워 놓고 딴 짓 가능
 
         self.textedit.textChanged.connect(self.findit)
-
 
     def findit(self, txt):
         """input이 변할 때마다 해당 텍스트 검색하는 함수"""
@@ -478,11 +480,12 @@ class TextFindDialog(QDialog):
                 self.parent.btn[self.findlist[0]].CopyText(self.parent)
                 self.btn1.setEnabled(True)
                 self.btn2.setEnabled(True)
-            
+
     def afterResult(self):
         """다음 검색 결과로 넘어가는 함수"""
         self.index = (self.index + 1) % self.listlen
-        self.resultlbl.setText('검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
+        self.resultlbl.setText(
+            '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
         self.parent.btn[self.findlist[self.index]].CopyText(self.parent)
 
     def beforeResult(self):
@@ -491,22 +494,23 @@ class TextFindDialog(QDialog):
             self.index = self.listlen - 1
         else:
             self.index -= 1
-        self.resultlbl.setText('검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
+        self.resultlbl.setText(
+            '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
         self.parent.btn[self.findlist[self.index]].CopyText(self.parent)
-
 
 
 class TextChangeDialog(QDialog):
     """텍스트 바꾸기 창 클래스"""
+    
     def __init__(self, parent):
         super().__init__()
         QDialog.__init__(self, None, Qt.WindowStaysOnTopHint)
         self.parent = parent
-        
+
         self.index = 0
         self.findlist = []
         self.listlen = 0
-        x, y = self.parent.pos().x(), self.parent.pos().y() # 창 위치 조정
+        x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 50, y + 150)
 
         self.textedit1 = QLineEdit()
@@ -538,7 +542,7 @@ class TextChangeDialog(QDialog):
 
         self.setWindowTitle('텍스트 바꾸기')
         self.setWindowIcon(QIcon(self.parent.ChangeIcon))
-        self.show() # 이게 있어야 찾기 창 띄워 놓고 딴 짓 가능
+        self.show()  # 이게 있어야 찾기 창 띄워 놓고 딴 짓 가능
 
         self.textedit1.textChanged.connect(self.findit)
 
@@ -553,17 +557,17 @@ class TextChangeDialog(QDialog):
         self.resultlbl.setText('검색 결과: 0 / 0 줄')
         if txt != '':
             for i in range(len(self.parent.btn)):
-                if self.parent.btn[i].WhatMode():   # 일단 주석은 제외
+                if self.parent.btn[i].WhatMode():  # 일단 주석은 제외
                     if txt in self.parent.btn[i].text():
                         self.findlist.append(i)
             self.listlen = len(self.findlist)
             if self.listlen > 0:
-                self.resultlbl.setText('검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
+                self.resultlbl.setText(
+                    '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
                 self.parent.btn[self.findlist[0]].CopyText(self.parent)
                 self.btn1.setEnabled(True)
                 self.btn2.setEnabled(True)
                 self.btn3.setEnabled(True)
-
 
     def textChange(self):
         """일치하는 텍스트 바꾸는 함수"""
@@ -580,7 +584,8 @@ class TextChangeDialog(QDialog):
         if self.listlen != 0:
             if self.index == self.listlen:
                 self.index = 0
-            self.resultlbl.setText('검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
+            self.resultlbl.setText(
+                '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
             self.parent.btn[self.findlist[self.index]].CopyText(self.parent)
         else:
             self.index = 0
@@ -590,23 +595,24 @@ class TextChangeDialog(QDialog):
             self.btn2.setDisabled(True)
             self.btn3.setDisabled(True)
             self.resultlbl.setText('검색 결과: 0 / 0 줄')
-        
+
     def allTextChange(self):
         """일치하는 모든 텍스트 바꾸는 함수"""
         temp1 = self.textedit1.text()
         temp2 = self.textedit2.text()
 
         for i in self.findlist:
-            self.parent.btn[i].setText(self.parent.btn[i].text().replace(temp1, temp2))
+            self.parent.btn[i].setText(
+                self.parent.btn[i].text().replace(temp1, temp2))
         self.findit(temp1)
         self.parent.recordChange()
 
     def afterResult(self):
         """다음 검색 결과로 넘어가는 함수"""
         self.index = (self.index + 1) % self.listlen
-        self.resultlbl.setText('검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
+        self.resultlbl.setText(
+            '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
         self.parent.btn[self.findlist[self.index]].CopyText(self.parent)
-
 
 
 class StartPsThread(QThread):
@@ -624,12 +630,13 @@ class StartPsThread(QThread):
                 tempApp = win32com.client.GetActiveObject("Photoshop.Application")
                 try:
                     layername = tempApp.Application.ActiveDocument.ActiveLayer.name
-                    # if layer.kind == 2:   # 이 조건문 다는 순간 포토샵에서 마우스 커서가 오락가락하는 버그 같은 게....
+                    # if layer.kind == 2:  # 이 조건문 다는 순간 포토샵에서 마우스 커서가 오락가락하는 버그 같은 게....
                         # if layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" or ("레이어" in layername) or ("Layer" in layername):
-                        #     # print(layername)
                         #     self.psTextLayerSignal.emit(True)
                         #     break
-                    if layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" or ("레이어" in layername) or ("Layer" in layername):
+                    if layername ==
+                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" or
+                    ("레이어" in layername) or ("Layer" in layername):
                         self.psTextLayerSignal.emit(True)
                         break
                 except:
@@ -642,15 +649,15 @@ class StartPsThread(QThread):
         self.quit()
 
 
-
 # 매크로 관련 클래스 모음 #########################################################
 class MacroStartwithProcess:
     """매크로 멀티프로세스 클래스"""
+
     def __init__(self, macroList):
         macroListThread = []
         for i in range(len(macroList)):
             infolist = macroList[i].split('#&@&#')
-            macroListThread.append(Thread(target=self.MacroMultProc, args=(infolist, )))    # 프로세스 내에서 각 매크로 스레드 생성
+            macroListThread.append(Thread(target=self.MacroMultProc, args=(infolist, )))  # 프로세스 내에서 각 매크로 스레드 생성
             macroListThread[i].start()
 
     def MacroMultProc(self, infolist):
@@ -663,23 +670,23 @@ class MacroStartwithProcess:
             else:
                 setKey = infolist[1]
 
-        if infolist[5] != '1': # 활성화 여부 체크
+        if infolist[5] != '1':  # 활성화 여부 체크
             return
 
-        while True: # 조건 키 누를 때까지 대기
+        while True:  # 조건 키 누를 때까지 대기
             try:
                 if keyboard.is_pressed(setKey):
                     break
             except:
                 pass
 
-        while True: # 조건 키 누른 후 뗄 때까지 대기
+        while True:  # 조건 키 누른 후 뗄 때까지 대기
             try:
                 if not keyboard.is_pressed(setKey):
                     break
             except:
                 pass
-        
+
         if infolist[3] != 'none':
             if infolist[4] != 'none':
                 hotkey(infolist[3], infolist[4])
@@ -690,9 +697,9 @@ class MacroStartwithProcess:
         self.MacroMultProc(infolist)    # 실행 후 다시 반복
 
 
-
 class MacroSetDialog(QDialog):
     """매크로 설정 창 클래스"""
+
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
@@ -742,10 +749,10 @@ class MacroSetDialog(QDialog):
 
         self.setWindowTitle('키보드 매크로 설정')
         self.setWindowIcon(QIcon(self.parent.SetMacroIcon))
-        x, y = self.parent.pos().x(), self.parent.pos().y() # 창 위치 조정
+        x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 50, y + 150)
         self.exec()
-    
+
     def listUp(self):
         """매크로 리스트 불러들이는 함수"""
         self.listwidget.clear()
@@ -757,11 +764,11 @@ class MacroSetDialog(QDialog):
             else:
                 item = self.listwidget.item(i).setForeground(Qt.black)
         self.lblinfo.setText('')
-    
+
     def addMacro(self):
         """매크로 추가 창 생성하는 함수"""
         addDialog = MacroAddDialog(self, 'none')
-    
+
     def modifyMacro(self):
         """매크로 수정 창 생성하는 함수"""
         modifyDialog = MacroAddDialog(self, self.parent.macroList[self.selectedItem])
@@ -817,9 +824,9 @@ class MacroSetDialog(QDialog):
         self.lblinfo.setText('(' + act + ') 조건: ' + c + ' / 액션: ' + a)
 
 
-
 class MacroAddDialog(QDialog):
     """매크로 추가 및 수정 창 클래스"""
+    
     def __init__(self, parent, info):
         super().__init__()
         self.parent = parent
@@ -848,7 +855,7 @@ class MacroAddDialog(QDialog):
 
         self.setLayout(grid)
 
-        if self.info == 'none': # 매크로 추가 버튼으로 생성됐을 때
+        if self.info == 'none':  # 매크로 추가 버튼으로 생성됐을 때
             btn.clicked.connect(lambda: self.saveKeys(-1))
             self.setWindowTitle('매크로 추가')
         else:   # 매크로 수정 버튼으로 생성됐을 때
@@ -866,9 +873,9 @@ class MacroAddDialog(QDialog):
                 if temp[4] != 'none':
                     self.btnA2.setText(temp[4])
             self.setWindowTitle('매크로 수정')
-    
+
         self.setWindowIcon(QIcon(self.parent.parent.SetMacroIcon))
-        x, y = self.parent.pos().x(), self.parent.pos().y() # 창 위치 조정
+        x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 30, y + 30)
         self.exec()
 
@@ -877,7 +884,7 @@ class MacroAddDialog(QDialog):
         groupbox = QGroupBox('조건 키')
 
         lblPlus = QLabel(' + ')
-        self.btnC1 =  QPushButton('선택 안 함')
+        self.btnC1 = QPushButton('선택 안 함')
         self.btnC1.clicked.connect(lambda: self.keyReadStart(1))
         self.btnC2 = QPushButton('선택 안 함')
         self.btnC2.clicked.connect(lambda: self.keyReadStart(2))
@@ -896,7 +903,7 @@ class MacroAddDialog(QDialog):
         groupbox = QGroupBox('실행 키')
 
         lblPlus = QLabel(' + ')
-        self.btnA1 =  QPushButton('선택 안 함')
+        self.btnA1 = QPushButton('선택 안 함')
         self.btnA1.clicked.connect(lambda: self.keyReadStart(3))
         self.btnA2 = QPushButton('선택 안 함')
         self.btnA2.clicked.connect(lambda: self.keyReadStart(4))
@@ -966,11 +973,11 @@ class MacroAddDialog(QDialog):
                 return True
 
         return False
-                
 
 
 class KeyReadDialog(QDialog):
     """키 읽어들이기 창 클래스"""
+
     def __init__(self, parent, i):
         super().__init__()
         self.parent = parent
@@ -993,7 +1000,7 @@ class KeyReadDialog(QDialog):
         self.keyThread.keyReadSignal.connect(self.keyRead)
 
         self.setWindowIcon(QIcon(self.parent.parent.parent.SetMacroIcon))
-        x, y = self.parent.pos().x(), self.parent.pos().y() # 창 위치 조정
+        x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 80, y + 50)
         self.exec()
 
@@ -1012,7 +1019,7 @@ class KeyReadDialog(QDialog):
             self.parent.btnA2.setText(key)
         self.check = True
         self.close()
-    
+
     def closeEvent(self, event):
         """키 읽어들이기 창 닫기 이벤트"""
         if self.check:
@@ -1023,9 +1030,9 @@ class KeyReadDialog(QDialog):
             event.ignore()
 
 
-
 class KeyRead(QThread):
     """키 읽어들이기 스레드 클래스"""
+
     keyReadSignal = pyqtSignal(str)
 
     def run(self):
@@ -1036,3 +1043,4 @@ class KeyRead(QThread):
         key = keyboard.read_key()
         self.keyReadSignal.emit(key)
         self.exit()
+
