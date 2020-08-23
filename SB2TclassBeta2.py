@@ -145,9 +145,7 @@ class TextLine(QPushButton):
 
     def AutoScroll(self, parent):
         """텍스트 클릭, 혹은 텍스트 선택 변경 시 보기 편하게 자동으로 스크롤 해주는 함수"""
-        if (self.num > 0 and self.num < 4) or
-        (self.num >= len(self.parent.btn) - 4 and
-         self.num < len(self.parent.btn) - 1):
+        if (self.num > 0 and self.num < 4) or (self.num >= len(self.parent.btn) - 4 and self.num < len(self.parent.btn) - 1):
             self.parent.scroll.ensureWidgetVisible(self.parent.btn[self.num - 1], 0, 0)
             self.parent.scroll.ensureWidgetVisible(self.parent.btn[self.num + 1], 0, 0)
         elif self.num >= 4 and self.num < len(self.parent.btn) - 4:
@@ -634,9 +632,7 @@ class StartPsThread(QThread):
                         # if layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" or ("레이어" in layername) or ("Layer" in layername):
                         #     self.psTextLayerSignal.emit(True)
                         #     break
-                    if layername ==
-                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" or
-                    ("레이어" in layername) or ("Layer" in layername):
+                    if layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" or ("레이어" in layername) or ("Layer" in layername):
                         self.psTextLayerSignal.emit(True)
                         break
                 except:
