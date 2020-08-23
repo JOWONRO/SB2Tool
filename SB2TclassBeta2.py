@@ -23,7 +23,6 @@ from pyautogui import hotkey, press, position
 from clipboard import copy, paste
 import time
 import keyboard
-from multiprocessing import Process
 from threading import Thread
 
 
@@ -630,7 +629,7 @@ class StartPsThread(QThread):
                         #     # print(layername)
                         #     self.psTextLayerSignal.emit(True)
                         #     break
-                    if layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" or ("레이어" in layername) or ("layer" in layername):
+                    if layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" or ("레이어" in layername) or ("Layer" in layername):
                         self.psTextLayerSignal.emit(True)
                         break
                 except:
