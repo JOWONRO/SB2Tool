@@ -3,3 +3,6 @@
 
 - backuptest 압축파일의 경우, pyinstaller로 식붕이툴을 실행파일로 만들었을 때 생기는 파일들 중, 프로그램 실행에 영향을 끼치지 않아 제외해도 되는 파일들을 모아놓음.
 - 혹시 모르니 backup에 있는 것만 삭제하고 릴리즈할 예정.
+
+## 매뉴얼 링크
+https://www.dropbox.com/scl/fi/prol8lxoordcblgesp92o/%EC%8B%9D%EB%B6%95%EC%9D%B4%ED%88%B4-Beta2.5-%EB%A7%A4%EB%89%B4%EC%96%BC.gdoc?dl=0&rlkey=9fixdl0o3ubcy6259eectlrfo
