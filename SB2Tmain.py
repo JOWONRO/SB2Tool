@@ -28,7 +28,7 @@ from win32gui import SetForegroundWindow
 from multiprocessing import Process, freeze_support
 from re import match
 
-from SB2TclassBeta2 import (
+from SB2Tclass import (
     TextLine,
     AdvSettingsDialog,
     TextFindDialog,
