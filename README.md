@@ -6,5 +6,5 @@
 
 ## 각종 링크들
 - 설치파일 다운로드 : https://drive.google.com/file/d/1djbxNw-HT7NGRjuTBg4Y98HM1nYSqk9X/view?usp=sharing
-- 매뉴얼 : https://www.dropbox.com/scl/fi/prol8lxoordcblgesp92o/%EC%8B%9D%EB%B6%95%EC%9D%B4%ED%88%B4-Beta2.5-%EB%A7%A4%EB%89%B4%EC%96%BC.gdoc?dl=0&rlkey=9fixdl0o3ubcy6259eectlrfo
+- 매뉴얼 : https://www.dropbox.com/scl/fi/prol8lxoordcblgesp92o/Beta2.5.gdoc?dl=0&rlkey=q0puqk1jael99qrjbluqay3lk
 - 버그 제보 및 피드백 : https://docs.google.com/spreadsheets/d/1h_0MIAYXrfB7h4FAlGsIU2DvGr6xyWh5D6FWnqs1rKM/edit#gid=0

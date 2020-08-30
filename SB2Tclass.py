@@ -197,8 +197,7 @@ class TextLine(QPushButton):
             try:
                 psApp = win32com.client.GetActiveObject("Photoshop.Application")
                 layer = psApp.Application.ActiveDocument.ActiveLayer
-                temp = paste()
-                layer.TextItem.Contents = temp  # 텍스트 레이어 내용물 변경
+                layer.TextItem.Contents = paste()  # 텍스트 레이어 내용물 변경
                 self.parent.psAutoThreadStart()
                 break
             except:
