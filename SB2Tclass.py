@@ -1,5 +1,6 @@
 import win32com.client
 import pythoncom
+from os import remove, path
 
 from PyQt5.QtWidgets import (
     QMessageBox,
@@ -30,71 +31,142 @@ from threading import Thread
 class TextLine(QPushButton):
     """메인 텍스트 라인을 담당하는 버튼 클래스"""
 
-    def __init__(self, parent, num, mode, txt):
+    def __init__(self, parent, num, mode, txt, connected_mode, head):
         super().__init__()
         self.num = num  # 텍스트 라인 인덱스
         self.parent = parent
         self.mode = mode    # 주석인지 기본 버튼인지 구분
         self.txt = txt
-        self.pasted = False  # 붙여넣기 흔적용 플래그
+        self.pasted = 0  # 붙여넣기 흔적용 플래그 (0:X, 1:최근, 2:흔적)
+        self.connected_mode = connected_mode
+        self.head = head
+        self.act_connection = 0
+        if self.connected_mode != -1:
+            self.act_connection = 1
 
         self.clicked.connect(self.copyPasteEvent)
         self.setLine()
 
     def setLine(self):
         """모드에 따라 텍스트 라인을 세팅하는 함수"""
-        if self.mode:   # 기본 버튼 모드 처리
+        self.setTextOfLine()
+        self.setStyleOfLine('default')
+        self.setCheckableOfLine()
+
+    def setTextOfLine(self):
+        """버튼에 표시되는 텍스트 설정 함수"""
+        if self.mode:   # 기본 버튼 모드
             self.setText(self.txt)
-            self.setCheckable(True)
-            if not self.pasted:  # 붙여넣기 이력이 있으면 흔적도 그대로 재현
-                self.setStyleSheet(
-                    " QPushButton {border: none; text-align: left; padding: 10px;} "
-                    " QPushButton:checked {background-color: yellow;} "
-                    " QPushButton:hover {background-color: #ffff84;} ")
-            else:
-                self.setStyleSheet(
-                    " QPushButton {border: none; text-align: left; padding: 10px; background-color: #f9f9f9;} "
-                    " QPushButton:checked {background-color: yellow;} "
-                    " QPushButton:hover {background-color: #ffff84;} ")
         else:   # 주석 처리
             if self.txt[0] == '/' or self.txt[0] == '`':
                 self.setText(self.txt[1:])
             else:
                 self.setText(self.txt)
+
+    def setStyleOfLine(self, status):
+        """
+        텍스트 라인의 성격에 따라 스타일 설정하는 함수\n
+        hover: #ffffa8 / chekced: yellow / 
+        last pasted: #ffe0b2 / pasted: #f9f9f9 / 
+        connected-act: #ff9800 / connected-deact: #969696
+        """
+        if status == 'default':
+            if self.pasted == 0:
+                background_color = ''
+            elif self.pasted == 1:
+                background_color = 'background-color: #ffe0b2;'
+            elif self.pasted == 2:
+                background_color = 'background-color: #f9f9f9;'
+            chk_bg_color = 'background-color: yellow;'
+        elif status == 'hover':
+            background_color = 'background-color: #ffffa8;'
+            chk_bg_color = 'background-color: #ffffa8;'
+
+        if self.connected_mode == -1:
+            margin = 'margin: 2px 0px;'
+            padding = 'padding: 10px;'
+            border_left = ''
+        else:
+            if self.connected_mode == 0:
+                margin = 'margin-top: 2px;'
+                padding = 'padding: 10px 10px 5px 10px;'
+            elif self.connected_mode == 1:
+                margin = ''
+                padding = 'padding: 5px 10px;'
+            elif self.connected_mode == 2:
+                margin = 'margin-bottom: 2px;'
+                padding = 'padding: 5px 10px 10px 10px;'
+            if self.act_connection:
+                border_left = 'border-left: 3px solid #ff3d00;'
+            else:
+                border_left = 'border-left: 3px solid #969696;'
+                padding = 'padding: 10px;'
+
+        self.setStyleSheet(self.makeStyleStr(
+            chk_bg_color, background_color, border_left, margin, padding))
+
+    def makeStyleStr(
+    self, chk_bg_color, background_color, border_left, margin, padding) -> str:
+        """설정된 속성을 스타일 텍스트에 적용시켜 리턴하는 함수"""
+        if self.mode:
+            return (
+                " QPushButton {border: none; text-align: left;"
+                + padding + margin + background_color + border_left + "}"
+                " QPushButton:checked {" + chk_bg_color + "}"
+                " QPushButton:hover {background-color: #ffffa8;} ")
+        else:
+            return (
+                " QPushButton {border: none; text-align: left; font-style: italic;"
+                " background-color: #E2E2E2; padding: 5px 10px; "
+                + margin + border_left + "}")
+
+    def setCheckableOfLine(self):
+        """모드에 따라 버튼 체크 가능 여부 정하는 함수"""
+        if self.mode:
+            self.setCheckable(True)
+        else:
             self.setCheckable(False)
-            self.setStyleSheet(
-                " QPushButton {border: none; text-align: left; background-color: #E2E2E2; padding: 5px 10px;} ")
 
-    # def whatNum(self) -> int:
-    #     """해당 텍스트 라인 인덱스를 반환하는 함수"""
-    #     return self.num
+    def enterEvent(self, e):
+        """마우스 포인터를 버튼 위에 올렸을 때 실행되는 함수"""
+        if self.act_connection:  # 연결 여부에 따라 연결된 버튼을 일괄 hover화
+            if self.connected_mode == 0:
+                self.parent.btn[self.num + 1].setConnectStyle(-1, 'hover')
+            elif self.connected_mode == 1:
+                self.parent.btn[self.num - 1].setConnectStyle(1, 'hover')
+                self.parent.btn[self.num + 1].setConnectStyle(-1, 'hover')
+            elif self.connected_mode == 2:
+                self.parent.btn[self.num - 1].setConnectStyle(1, 'hover')
 
-    def whatMode(self) -> int:
-        """해당 텍스트 라인의 모드를 반환하는 함수"""
-        return self.mode
+    def leaveEvent(self, e):
+        """마우스 포인터를 버튼에서 떨어뜨렸을 때 실행되는 함수"""
+        if self.act_connection:  # 강제 hover 해제
+            if self.connected_mode == 0:
+                self.parent.btn[self.num + 1].setConnectStyle(-1, 'default')
+            elif self.connected_mode == 1:
+                self.parent.btn[self.num - 1].setConnectStyle(1, 'default')
+                self.parent.btn[self.num + 1].setConnectStyle(-1, 'default')
+            elif self.connected_mode == 2:
+                self.parent.btn[self.num - 1].setConnectStyle(1, 'default')
 
-    def whatText(self) -> str:
-        """해당 텍스트 라인의 텍스트를 반환하는 함수"""
-        return self.txt
-
-    def changePasted(self, boolean):
-        """해당 텍스트 라인의 붙여넣기 플래그를 변경하는 함수"""
-        self.pasted = boolean
-
-    def changeMode(self, mode):
-        """해당 텍스트 라인의 모드를 변경하는 함수"""
-        self.mode = mode
-
-    def changeText(self, txt):
-        """해당 텍스트 라인의 텍스트를 변경하는 함수"""
-        self.txt = txt
+    def setConnectStyle(self, way, status):
+        """연결된 라인들을 순차적으로 인자로 받은 스타일로 변경하는 함수"""
+        self.setStyleOfLine(status)
+        if self.connected_mode == 1:
+            self.parent.btn[self.num - way].setConnectStyle(way, status)
 
     def contextMenuEvent(self, event):
         """해당 텍스트 라인 우클릭 시 나타나는 메뉴 이벤트"""
         menu = QMenu(self)
+        textEditAction = menu.addAction("텍스트 수정(&E)")
+        menu.addSeparator()
         changeToCommentAction = menu.addAction("주석 적용(&C)")
         changeToButtonAction = menu.addAction("주석 해제(&C)")
-        textEditAction = menu.addAction("텍스트 수정(&E)")
+        deactivateConnection = menu.addAction("연결 비활성화(&A)")
+        activateConnection = menu.addAction("연결 활성화(&A)")
+        menu.addSeparator()
+        makeBookmark = menu.addAction("책갈피 생성(&B)")
+        deleteBookmark = menu.addAction("책갈피 삭제(&B)")
 
         if self.mode:
             changeToCommentAction.setVisible(True)
@@ -102,6 +174,22 @@ class TextLine(QPushButton):
         else:
             changeToCommentAction.setVisible(False)
             changeToButtonAction.setVisible(True)
+        if self.connected_mode == -1:
+            deactivateConnection.setVisible(False)
+            activateConnection.setVisible(False)
+        else:
+            if self.act_connection:
+                deactivateConnection.setVisible(True)
+                activateConnection.setVisible(False)
+            else:
+                deactivateConnection.setVisible(False)
+                activateConnection.setVisible(True)
+        if self.parent.bookmark == self.num:
+            makeBookmark.setVisible(False)
+            deleteBookmark.setVisible(True)
+        else:
+            makeBookmark.setVisible(True)
+            deleteBookmark.setVisible(False)
 
         action = menu.exec_(self.mapToGlobal(event.pos()))  # 우클릭한 지점에서 메뉴 생성
         if action == changeToCommentAction:
@@ -112,68 +200,175 @@ class TextLine(QPushButton):
             self.mode = 1
             self.setLine()
             self.parent.recordChange()
+        elif action == deactivateConnection:
+            self.setActiveConnection(False)
+        elif action == activateConnection:
+            self.setActiveConnection(True)
         elif action == textEditAction:
             self.setTextEditDialog()
+        elif action == makeBookmark:
+            self.setBookmark(True)
+        elif action == deleteBookmark:
+            self.setBookmark(False)
+
+    def setBookmark(self, boolean):
+        """책갈피 설정하는 함수"""
+        fname = self.parent.filepath + '.bmk'
+        if boolean:
+            self.setIcon(QIcon('icons/bookmark.png'))
+            self.parent.btn[self.parent.bookmark].setIcon(QIcon(''))
+            self.parent.bookmark = self.num
+            self.parent.goBmkEdit.setEnabled(True)
+            self.parent.goBookmarkAction.setEnabled(True)
+            try:
+                with open(fname, 'w') as f:
+                    f.write(str(self.num))
+            except Exception as e:
+                QMessageBox.warning(self, "오류", "책갈피를 저장하지 못했습니다.\n" + str(e))
+        else:
+            self.setIcon(QIcon(''))
+            self.parent.bookmark = -1
+            self.parent.goBmkEdit.setDisabled(True)
+            self.parent.goBookmarkAction.setDisabled(True)
+            try:
+                if path.exists(fname):
+                    remove(fname)
+            except Exception as e:
+                QMessageBox.warning(self, "오류", "책갈피를 삭제하지 못했습니다.\n" + str(e))
+
+    def setActiveConnection(self, boolean):
+        """연결 활성화하는 함수"""
+        mode = 0
+        i = self.head
+        while True:
+            self.parent.btn[i].act_connection = boolean
+            self.parent.btn[i].setStyleOfLine('default')
+            if self.parent.btn[i].connected_mode == 2:
+                break;
+            i += 1
+
+    def mouseDoubleClickEvent(self, a0):
+        """버튼 더블 클릭 시 실행되는 함수"""
+        self.setTextEditDialog()
 
     def setTextEditDialog(self):
         """텍스트 수정 창 생성하는 함수"""
         dialog = TextEditDialog(self)
 
-    def copyText(self, parent):
-        """텍스트 라인 복사하는 함수\n
-        소괄호 제외 복사, 큰 따옴표 제외 복사, 작은 따옴표 제외 복사 기능 포함"""
-        self.parent.lineStatus.setText(' 줄 ' + str(self.num + 1) + '  ')
-        self.parent.lineCnt = self.num
-        temptxt = self.parent.btn[self.num].text()
+    def copyText(self):
+        """비연결 시 텍스트 라인 한 줄, 연결 시 여러 줄을 복사하는 함수"""
+        if self.act_connection:
+            self.copyConnectedLines()
+        else:
+            self.copyOneLine()
 
-        copy(temptxt)
+    def whatTxtForCopy(self) -> str:
+        """실제 복사할 텍스트를 반환하는 함수\n
+        소괄호, 중괄호, 대괄호, 큰따음표, 작은따음표 제외 복사 기능 포함"""
+        temptxt = self.txt
         if self.parent.exceptbrackets:   # 괄호문을 인식하여 괄호만 빼고 복사
             if temptxt[0] == '(' and temptxt[len(temptxt) - 1] == ')':
-                copy(temptxt[1:len(temptxt) - 1])
+                temptxt = temptxt[1:len(temptxt) - 1]
+
+        if self.parent.exceptCurlybrackets:   # 괄호문을 인식하여 괄호만 빼고 복사
+            if temptxt[0] == '{' and temptxt[len(temptxt) - 1] == '}':
+                temptxt = temptxt[1:len(temptxt) - 1]
+
+        if self.parent.exceptSquarebrackets:   # 괄호문을 인식하여 괄호만 빼고 복사
+            if temptxt[0] == '[' and temptxt[len(temptxt) - 1] == ']':
+                temptxt = temptxt[1:len(temptxt) - 1]
 
         if self.parent.exceptDQuotaion:   # 큰 따옴표 인식하여 괄호만 빼고 복사
             if temptxt[0] == '"' and temptxt[len(temptxt) - 1] == '"':
-                copy(temptxt[1:len(temptxt) - 1])
+                temptxt = temptxt[1:len(temptxt) - 1]
 
         if self.parent.exceptSQuotaion:   # 작은 따옴표 인식하여 괄호만 빼고 복사
             if temptxt[0] == "'" and temptxt[len(temptxt) - 1] == "'":
-                copy(temptxt[1:len(temptxt) - 1])
+                temptxt = temptxt[1:len(temptxt) - 1]
+        
+        return temptxt
 
-        self.autoScroll(self.parent)
-        self.cleanToggle(self.parent)
+    def copyOneLine(self):
+        """한 줄만 복사하는 함수"""
+        copy(self.whatTxtForCopy())
+
+        self.parent.lineStatus.setText(' 줄 ' + str(self.num + 1) + '  ')
+        self.parent.lineCnt = self.num
+        self.autoScroll(self.num)
+        self.cleanToggle()
         if self.parent.ProgramSettingOn:
             self.parent.pasteEdit.setEnabled(True)
 
-    def autoScroll(self, parent):
-        """텍스트 클릭, 혹은 텍스트 선택 변경 시 보기 편하게 자동으로 스크롤 해주는 함수"""
-        if (self.num > 0 and self.num < 4) or (self.num >= len(self.parent.btn) - 4 and self.num < len(self.parent.btn) - 1):
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[self.num - 1], 0, 0)
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[self.num + 1], 0, 0)
-        elif self.num >= 4 and self.num < len(self.parent.btn) - 4:
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[self.num - 4], 0, 0)
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[self.num + 4], 0, 0)
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[self.num - 1], 0, 0)
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[self.num + 1], 0, 0)
-        self.parent.scroll.ensureWidgetVisible(self.parent.btn[self.num], 0, 50)
+    def copyConnectedLines(self):
+        """연결된 모든 줄을 한꺼번에 복사하는 함수"""
+        temptxt = ''
+        i = self.head
+        while True:
+            if self.parent.btn[i].mode:
+                temptxt = temptxt + self.parent.btn[i].whatTxtForCopy()
+                self.parent.btn[i].setChecked(True)
+                lineCnt = i
+                if self.parent.btn[i].connected_mode != 2:
+                    temptxt = temptxt + '\n'
 
-    def cleanToggle(self, parent):
+            if self.parent.btn[i].connected_mode == 2:
+                break
+            else:
+                i += 1
+        copy(temptxt)
+
+        self.parent.lineStatus.setText(' 줄 ' + str(i + 1) + '  ')
+        self.parent.lineCnt = lineCnt
+        self.autoScroll(lineCnt)
+        self.cleanToggle()
+        if self.parent.ProgramSettingOn:
+            self.parent.pasteEdit.setEnabled(True)
+
+    def autoScroll(self, num):
+        """텍스트 클릭, 혹은 텍스트 선택 변경 시 보기 편하게 자동으로 스크롤 해주는 함수"""
+        if (num > 0 and num < 4) or (num >= len(self.parent.btn) - 4 and num < len(self.parent.btn) - 1):
+            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num - 1], 0, 0)
+            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num + 1], 0, 0)
+        elif num >= 4 and num < len(self.parent.btn) - 4:
+            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num - 4], 0, 0)
+            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num + 4], 0, 0)
+            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num - 1], 0, 0)
+            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num + 1], 0, 0)
+        self.parent.scroll.ensureWidgetVisible(self.parent.btn[num], 0, 50)
+
+    def cleanToggle(self):
         """버튼 토글 정리해주는 함수"""
         if not self.isChecked():
             self.toggle()
         for i in range(len(self.parent.btn)):
-            if self.parent.btn[i].whatMode:
+            if self.parent.btn[i].mode:
                 if i != self.num:
                     if self.parent.btn[i].isChecked():
-                        self.parent.btn[i].toggle()
+                        if self.act_connection:
+                            if self.head != self.parent.btn[i].head:
+                                self.parent.btn[i].toggle()
+                        else:
+                            self.parent.btn[i].toggle()
         self.parent.hbar.setValue(self.parent.hbar.minimum())  # 이렇게 좌로 스크롤 안 해주면 수평 스크롤이 자꾸 중앙으로 간다
 
-    def pasteText(self, parent):
+    def setUncheckedAfterPaste(self):
+        """복사 후 버튼 체크 풀어주는 함수"""
+        if self.act_connection:
+            i = self.head
+            while True:
+                self.parent.btn[i].setChecked(False)
+                if self.parent.btn[i].connected_mode == 2:
+                    break
+                i += 1
+        else:
+            self.setChecked(False)
+
+    def pasteText(self):
         """기본 모드와 자동 모드 시 적용되는 붙여넣기 함수"""
-        self.setTraceTextLine(self.parent)
-        self.changePasted(True)
         self.parent.windowFocus()
         hotkey('ctrl', 'v')
-        self.toggle()
+        self.setUncheckedAfterPaste()
+        self.parent.pasteEdit.setDisabled(True)
         time.sleep(.1)  # 이렇게 안 해주면 PS 모드 동시 사용 시 다음 라인이 복붙되는 현상 발생
 
         if self.parent.pasteCtrlEnter:  # 포토샵 한정 자동 레이어 닫기 여부
@@ -183,16 +378,14 @@ class TextLine(QPushButton):
             except:
                 pass
 
+        self.setTraceTextLine()
         if self.parent.psAutoStartAction.isChecked():  # PS 모드 동시 사용 시 다음 라인 자동 복사
             self.parent.nextLineCopy()
         # self.parent.resetRecordAction.setEnabled(True)
         self.parent.resetRecord.setEnabled(True)
 
-    def pasteTextPSMode(self, parent):
+    def pasteTextPSMode(self):
         """PS 모드 시 적용되는 붙여넣기 함수"""
-        self.setTraceTextLine(self.parent)
-        self.changePasted(True)
-
         while True:
             try:
                 psApp = win32com.client.GetActiveObject("Photoshop.Application")
@@ -201,25 +394,42 @@ class TextLine(QPushButton):
                 self.parent.psAutoThreadStart()
                 break
             except:
-                pass    # 텍스트 바뀌기도 전에 텍스트 레이어 옮길 때 생기는 충돌 현상 방지
+                pass  # 텍스트 바뀌기도 전에 텍스트 레이어 옮길 때 생기는 충돌 현상 방지
 
+        self.setTraceTextLine()
         self.parent.nextLineCopy()
         # self.parent.resetRecordAction.setEnabled(True)
         self.parent.resetRecord.setEnabled(True)
 
-    def setTraceTextLine(self, parent): 
+    def setTraceTextLine(self): 
         """텍스트 라인 색상 바꾸는 함수 (흔적 남기기)"""
-        self.changePasted(True)
-        self.parent.btn[self.parent.lineCnt].setStyleSheet(
-            " QPushButton {border: none; text-align: left; padding: 10px; background-color: #ffda9f;} "
-            " QPushButton:checked {background-color: yellow;} "
-            " QPushButton:hover {background-color: #ffff84;} ")
-
         if self.parent.lineCntBack != -1:
-            self.parent.btn[self.parent.lineCntBack].setStyleSheet(
-                " QPushButton {border: none; text-align: left; padding: 10px; background-color: #f9f9f9;} "
-                " QPushButton:checked {background-color: yellow;} "
-                " QPushButton:hover {background-color: #ffff84;} ")
+            if self.parent.btn[self.parent.lineCntBack].act_connection:
+                i = self.parent.btn[self.parent.lineCntBack].head
+                while True:
+                    if self.parent.btn[i].mode:
+                        self.parent.btn[i].pasted = 2
+                        self.parent.btn[i].setStyleOfLine('default')
+                    if self.parent.btn[i].connected_mode == 2:
+                        break
+                    i += 1
+            else:
+                self.parent.btn[self.parent.lineCntBack].pasted = 2
+                self.parent.btn[self.parent.lineCntBack].setStyleOfLine('default')
+
+        if self.parent.btn[self.parent.lineCnt].act_connection:
+            i = self.parent.btn[self.parent.lineCnt].head
+            while True:
+                if self.parent.btn[i].mode:
+                    self.parent.btn[i].pasted = 1
+                    self.parent.btn[i].setStyleOfLine('default')
+                if self.parent.btn[i].connected_mode == 2:
+                    break
+                i += 1
+        else:
+            self.parent.btn[self.parent.lineCnt].pasted = 1
+            self.parent.btn[self.parent.lineCnt].setStyleOfLine('default')
+
         self.parent.lineCntBack = self.parent.lineCnt
 
     def copyPasteEvent(self, parent):
@@ -227,12 +437,10 @@ class TextLine(QPushButton):
         기본 모드 시 복사만, 자동 모드 시 붙여넣기까지"""
         if self.mode:
             if self.parent.autoStartAction.isChecked():  # 자동 모드일 때
-                self.copyText(self.parent)
-                self.pasteText(self.parent)
+                self.copyText()
+                self.pasteText()
             else:  # 기본 모드일 때. 클릭 시 복사만 진행
-                self.copyText(self.parent)
-        else:
-            pass
+                self.copyText()
 
 
 class TextEditDialog(QDialog):
@@ -261,6 +469,7 @@ class TextEditDialog(QDialog):
 
         self.setLayout(vbox)
         self.setWindowTitle('텍스트 수정')
+        self.setWindowIcon(QIcon('icons/text.png'))
         x, y = position()  # 창 위치 조정
         self.move(x - 50, y - 50)
         self.exec()
@@ -311,17 +520,25 @@ class AdvSettingsDialog(QDialog):
         self.copycheckbox1 = QCheckBox('문장 양 끝 소괄호 제외')
         self.copycheckbox1.setChecked(self.parent.exceptbrackets)
         self.copycheckbox1.stateChanged.connect(self.setExceptBrackets)
-        self.copycheckbox2 = QCheckBox('문장 양 끝 큰 따옴표 제외')
-        self.copycheckbox2.setChecked(self.parent.exceptDQuotaion)
-        self.copycheckbox2.stateChanged.connect(self.setExceptDQuotation)
-        self.copycheckbox3 = QCheckBox('문장 양 끝 작은 따옴표 제외')
-        self.copycheckbox3.setChecked(self.parent.exceptSQuotaion)
-        self.copycheckbox3.stateChanged.connect(self.setExceptSQuotation)
+        self.copycheckbox2 = QCheckBox('문장 양 끝 중괄호 제외')
+        self.copycheckbox2.setChecked(self.parent.exceptCurlybrackets)
+        self.copycheckbox2.stateChanged.connect(self.setExceptCurlyBrackets)
+        self.copycheckbox3 = QCheckBox('문장 양 끝 대괄호 제외')
+        self.copycheckbox3.setChecked(self.parent.exceptSquarebrackets)
+        self.copycheckbox3.stateChanged.connect(self.setExceptSquareBrackets)
+        self.copycheckbox4 = QCheckBox('문장 양 끝 큰 따옴표 제외')
+        self.copycheckbox4.setChecked(self.parent.exceptDQuotaion)
+        self.copycheckbox4.stateChanged.connect(self.setExceptDQuotation)
+        self.copycheckbox5 = QCheckBox('문장 양 끝 작은 따옴표 제외')
+        self.copycheckbox5.setChecked(self.parent.exceptSQuotaion)
+        self.copycheckbox5.stateChanged.connect(self.setExceptSQuotation)
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.copycheckbox1)
         vbox.addWidget(self.copycheckbox2)
         vbox.addWidget(self.copycheckbox3)
+        vbox.addWidget(self.copycheckbox4)
+        vbox.addWidget(self.copycheckbox5)
         vbox.addStretch(1)
         groupbox.setLayout(vbox)
 
@@ -381,21 +598,37 @@ class AdvSettingsDialog(QDialog):
             self.parent.exceptbrackets = 0
         self.parent.advSettingsList[0] = self.parent.exceptbrackets
 
+    def setExceptCurlyBrackets(self):
+        """중괄호 제외 복사 기능 활성화 여부 함수"""
+        if self.copycheckbox2.isChecked():
+            self.parent.exceptCurlybrackets = 1
+        else:
+            self.parent.exceptCurlybrackets = 0
+        self.parent.advSettingsList[1] = self.parent.exceptCurlybrackets
+
+    def setExceptSquareBrackets(self):
+        """대괄호 제외 복사 기능 활성화 여부 함수"""
+        if self.copycheckbox3.isChecked():
+            self.parent.exceptSquarebrackets = 1
+        else:
+            self.parent.exceptSquarebrackets = 0
+        self.parent.advSettingsList[2] = self.parent.exceptSquarebrackets
+
     def setExceptDQuotation(self):
         """큰 따옴표 제외 복사 기능 활성화 여부 함수"""
-        if self.copycheckbox2.isChecked():
+        if self.copycheckbox4.isChecked():
             self.parent.exceptDQuotaion = 1
         else:
             self.parent.exceptDQuotaion = 0
-        self.parent.advSettingsList[1] = self.parent.exceptDQuotaion
+        self.parent.advSettingsList[3] = self.parent.exceptDQuotaion
 
     def setExceptSQuotation(self):
         """작은 따옴표 제외 복사 기능 활성화 여부 함수"""
-        if self.copycheckbox3.isChecked():
+        if self.copycheckbox5.isChecked():
             self.parent.exceptSQuotaion = 1
         else:
             self.parent.exceptSQuotaion = 0
-        self.parent.advSettingsList[2] = self.parent.exceptSQuotaion
+        self.parent.advSettingsList[4] = self.parent.exceptSQuotaion
 
     def setpasteCtrlEnter(self):
         """붙여넣기 후 레이어 닫기 기능 활성화 여부 함수"""
@@ -403,7 +636,7 @@ class AdvSettingsDialog(QDialog):
             self.parent.pasteCtrlEnter = 1
         else:
             self.parent.pasteCtrlEnter = 0
-        self.parent.advSettingsList[3] = self.parent.pasteCtrlEnter
+        self.parent.advSettingsList[5] = self.parent.pasteCtrlEnter
 
     def setCommentWithNumber(self):
         """숫자 주석 처리 기능 활성화 여부 함수"""
@@ -411,7 +644,7 @@ class AdvSettingsDialog(QDialog):
             self.parent.commentWithNumber = 1
         else:
             self.parent.commentWithNumber = 0
-        self.parent.advSettingsList[4] = self.parent.commentWithNumber
+        self.parent.advSettingsList[6] = self.parent.commentWithNumber
 
     def setCommentWithP(self):
         """P, p 주석 처리 기능 활성화 여부 함수"""
@@ -419,7 +652,7 @@ class AdvSettingsDialog(QDialog):
             self.parent.commentWithP = 1
         else:
             self.parent.commentWithP = 0
-        self.parent.advSettingsList[5] = self.parent.commentWithP
+        self.parent.advSettingsList[7] = self.parent.commentWithP
 
 
 class TextFindDialog(QDialog):
@@ -469,13 +702,13 @@ class TextFindDialog(QDialog):
         self.resultlbl.setText('검색 결과: 0 / 0 줄')
         if txt != '':
             for i in range(len(self.parent.btn)):
-                if self.parent.btn[i].whatMode():   # 일단 주석은 제외
+                if self.parent.btn[i].mode:   # 일단 주석은 제외
                     if txt in self.parent.btn[i].text():
                         self.findlist.append(i)
             self.listlen = len(self.findlist)
             if self.listlen > 0:
                 self.resultlbl.setText('검색 결과: 1 / ' + str(self.listlen) + ' 줄')
-                self.parent.btn[self.findlist[0]].copyText(self.parent)
+                self.parent.btn[self.findlist[0]].copyText()
                 self.btn1.setEnabled(True)
                 self.btn2.setEnabled(True)
 
@@ -484,7 +717,7 @@ class TextFindDialog(QDialog):
         self.index = (self.index + 1) % self.listlen
         self.resultlbl.setText(
             '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
-        self.parent.btn[self.findlist[self.index]].copyText(self.parent)
+        self.parent.btn[self.findlist[self.index]].copyText()
 
     def beforeResult(self):
         """이전 검색 결과로 넘어가는 함수"""
@@ -494,7 +727,7 @@ class TextFindDialog(QDialog):
             self.index -= 1
         self.resultlbl.setText(
             '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
-        self.parent.btn[self.findlist[self.index]].copyText(self.parent)
+        self.parent.btn[self.findlist[self.index]].copyText()
 
 
 class TextChangeDialog(QDialog):
@@ -555,14 +788,14 @@ class TextChangeDialog(QDialog):
         self.resultlbl.setText('검색 결과: 0 / 0 줄')
         if txt != '':
             for i in range(len(self.parent.btn)):
-                if self.parent.btn[i].whatMode():  # 일단 주석은 제외
+                if self.parent.btn[i].mode:  # 일단 주석은 제외
                     if txt in self.parent.btn[i].text():
                         self.findlist.append(i)
             self.listlen = len(self.findlist)
             if self.listlen > 0:
                 self.resultlbl.setText(
                     '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
-                self.parent.btn[self.findlist[0]].copyText(self.parent)
+                self.parent.btn[self.findlist[0]].copyText()
                 self.btn1.setEnabled(True)
                 self.btn2.setEnabled(True)
                 self.btn3.setEnabled(True)
@@ -584,7 +817,7 @@ class TextChangeDialog(QDialog):
                 self.index = 0
             self.resultlbl.setText(
                 '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
-            self.parent.btn[self.findlist[self.index]].copyText(self.parent)
+            self.parent.btn[self.findlist[self.index]].copyText()
         else:
             self.index = 0
             self.listlen = 0
@@ -610,7 +843,7 @@ class TextChangeDialog(QDialog):
         self.index = (self.index + 1) % self.listlen
         self.resultlbl.setText(
             '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
-        self.parent.btn[self.findlist[self.index]].copyText(self.parent)
+        self.parent.btn[self.findlist[self.index]].copyText()
 
 
 class StartPsThread(QThread):
@@ -622,17 +855,19 @@ class StartPsThread(QThread):
 
     def exec(self):
         """레이어 생성될 때까지 기다리는 반복하는 함수"""
-        pythoncom.CoInitialize()    # 이거 안 하면 스레딩 오류나는 경우가 생김.
+        pythoncom.CoInitialize()  # 이거 안 하면 스레딩 오류나는 경우가 생김.
         while True:
             try:
                 tempApp = win32com.client.GetActiveObject("Photoshop.Application")
                 try:
                     layername = tempApp.Application.ActiveDocument.ActiveLayer.name
                     # if layer.kind == 2:  # 이 조건문 다는 순간 포토샵에서 마우스 커서가 오락가락하는 버그 같은 게....
-                        # if layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" or ("레이어" in layername) or ("Layer" in layername):
+                        # if (layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do"
+                        # or ("레이어" in layername) or ("Layer" in layername)):
                         #     self.psTextLayerSignal.emit(True)
                         #     break
-                    if layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" or match("^레이어 [0-9]+$", layername) or match("^Layer [0-9]+$", layername):
+                    if (layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" 
+                    or match("^레이어 [0-9]+$", layername) or match("^Layer [0-9]+$", layername)):
                         self.psTextLayerSignal.emit(True)
                         break
                 except:
@@ -642,6 +877,26 @@ class StartPsThread(QThread):
                 break
         pythoncom.CoUninitialize()
         # self.exit()
+        self.quit()
+
+
+class CheckBmkThread(QThread):
+    """파일 불러오고 UI 적용 중 책갈피 체크 후 자동 스크롤 하는 스레드"""
+    #  스레드로 안 돌려주면 버튼이 다 불러오기도 전에 책갈피 이동이 실행됨
+    check_Bookmark = pyqtSignal()
+
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
+
+    def run(self):
+        self.exec()
+
+    def exec(self):
+        while True:
+            if self.parent.goBmkEdit.isEnabled():
+                self.check_Bookmark.emit()
+                break
         self.quit()
 
 
@@ -743,7 +998,7 @@ class MacroSetDialog(QDialog):
         self.setWindowTitle('키보드 매크로 설정')
         self.setWindowIcon(QIcon(self.parent.SetMacroIcon))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
-        self.move(x + 50, y + 150)
+        self.move(x + 30, y + 120)
         self.exec()
 
     def listUp(self):
@@ -1032,7 +1287,6 @@ class KeyReadDialog(QDialog):
 
 class KeyRead(QThread):
     """키 읽어들이기 스레드 클래스"""
-
     keyReadSignal = pyqtSignal(str)
 
     def run(self):
