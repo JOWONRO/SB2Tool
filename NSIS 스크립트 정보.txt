@@ -2,13 +2,13 @@
 
 프로그램 정보:
 	식붕이툴
-	Beta_2
+	Beta3.0
 	고리성운
-	https://blog.naver.com/dnjsfh611/222013547656
+	https://blog.naver.com/dnjsfh611/
 
 설치 옵션:
 	아이콘 - 기본
-	파일 - 식붕이툴-Beta_2_Setup.exe
+	파일 - 식붕이툴-Beta3.0_Setup.exe
 	설치 언어 - 기본
 	GUI - 모던
 	압축 - zlib
@@ -18,6 +18,7 @@
 	라이센스 - 지우기
 
 프로그램 파일:
+	파일이 이미 존재할 경우: 항상 덮어쓰기
 
 프로그램 아이콘:
 

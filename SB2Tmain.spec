@@ -26,7 +26,8 @@ exe = EXE(pyz,
           bootloader_ignore_signals=False,
           strip=False,
           upx=True,
-          console=False , icon='D:\\coding\\git\\SB2Tool\\favicon.ico')
+          console=False,
+          icon='D:\\coding\\git\\SB2Tool\\favicon.ico')
 coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,
