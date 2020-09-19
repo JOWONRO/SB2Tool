@@ -293,7 +293,8 @@ class TextLine(QPushButton):
         copy(self.whatTxtForCopy())
 
         self.parent.lineStatus.setText(' 줄 ' + str(self.num + 1) + '  ')
-        self.parent.lineCnt = self.num
+        self.parent.lineCnt.clear()
+        self.parent.lineCnt.append(self.num)
         self.autoScroll(self.num)
         self.cleanToggle()
         if self.parent.ProgramSettingOn:
@@ -303,11 +304,12 @@ class TextLine(QPushButton):
         """연결된 모든 줄을 한꺼번에 복사하는 함수"""
         temptxt = ''
         i = self.head
+        self.parent.lineCnt.clear()
         while True:
             if self.parent.btn[i].mode:
                 temptxt = temptxt + self.parent.btn[i].whatTxtForCopy()
                 self.parent.btn[i].setChecked(True)
-                lineCnt = i
+                self.parent.lineCnt.append(i)
                 if self.parent.btn[i].connected_mode != 2:
                     temptxt = temptxt + '\n'
 
@@ -318,8 +320,7 @@ class TextLine(QPushButton):
         copy(temptxt)
 
         self.parent.lineStatus.setText(' 줄 ' + str(i + 1) + '  ')
-        self.parent.lineCnt = lineCnt
-        self.autoScroll(lineCnt)
+        self.autoScroll(self.parent.lineCnt[-1])
         self.cleanToggle()
         if self.parent.ProgramSettingOn:
             self.parent.pasteEdit.setEnabled(True)
@@ -403,34 +404,18 @@ class TextLine(QPushButton):
 
     def setTraceTextLine(self): 
         """텍스트 라인 색상 바꾸는 함수 (흔적 남기기)"""
-        if self.parent.lineCntBack != -1:
-            if self.parent.btn[self.parent.lineCntBack].act_connection:
-                i = self.parent.btn[self.parent.lineCntBack].head
-                while True:
-                    if self.parent.btn[i].mode:
-                        self.parent.btn[i].pasted = 2
-                        self.parent.btn[i].setStyleOfLine('default')
-                    if self.parent.btn[i].connected_mode == 2:
-                        break
-                    i += 1
-            else:
-                self.parent.btn[self.parent.lineCntBack].pasted = 2
-                self.parent.btn[self.parent.lineCntBack].setStyleOfLine('default')
-
-        if self.parent.btn[self.parent.lineCnt].act_connection:
-            i = self.parent.btn[self.parent.lineCnt].head
-            while True:
+        if len(self.parent.lineCntBack) != 0:
+            for i in self.parent.lineCntBack:
                 if self.parent.btn[i].mode:
-                    self.parent.btn[i].pasted = 1
+                    self.parent.btn[i].pasted = 2
                     self.parent.btn[i].setStyleOfLine('default')
-                if self.parent.btn[i].connected_mode == 2:
-                    break
-                i += 1
-        else:
-            self.parent.btn[self.parent.lineCnt].pasted = 1
-            self.parent.btn[self.parent.lineCnt].setStyleOfLine('default')
 
-        self.parent.lineCntBack = self.parent.lineCnt
+        for i in self.parent.lineCnt:
+            if self.parent.btn[i].mode:
+                self.parent.btn[i].pasted = 1
+                self.parent.btn[i].setStyleOfLine('default')
+
+        self.parent.lineCntBack = self.parent.lineCnt[:]
 
     def copyPasteEvent(self, parent):
         """텍스트 라인 클릭 시 실행되는 함수\n

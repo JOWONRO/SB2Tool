@@ -119,8 +119,8 @@ class MainApp(QMainWindow):
         self.allString = ''
         self.saveCheck = False
         self.btn = []
-        self.lineCnt = 0
-        self.lineCntBack = -1
+        self.lineCnt = []
+        self.lineCntBack = []
         self.macroListThread = []
         self.selectedProgram = getWindowsWithTitle('식붕이툴')
         self.selectedProgramTitle = '선택 안 함'
@@ -791,9 +791,8 @@ class MainApp(QMainWindow):
 
     def checkPhotoshop(self):
         """지정된 프로그램이 포토샵인지 확인하는 함수"""
-        self.psAutoStartAction.setDisabled(True)
-        self.psMode.setDisabled(True)
-
+        # self.psAutoStartAction.setDisabled(True)
+        # self.psMode.setDisabled(True)
         # check = False
         try:
             temp = win32com.client.GetActiveObject("Photoshop.Application")  # 포토샵 앱 불러오기
@@ -819,7 +818,7 @@ class MainApp(QMainWindow):
             #         QMessageBox.warning(self, "포토샵 모드 오류",
             #         "레이어를 닫은 다음에\n다시 지정해 주세요.")
         except Exception as e:
-            QMessageBox.warning(self, "포토샵 모드 오류", str(e))
+            # QMessageBox.warning(self, "포토샵 모드 오류", str(e))
             self.psAutoStartAction.setDisabled(True)
             self.psMode.setDisabled(True)
 
@@ -910,13 +909,13 @@ class MainApp(QMainWindow):
     @pyqtSlot(bool)
     def psPaste(self, boolean):
         """포토샵 모드 붙여넣기 실행 함수"""
-        if self.lineCnt == 0:  # 첫 번째 텍스트 라인 모드 체크
-            self.lineCnt = self.nextNumOfBtnMode(0)
+        if len(self.lineCnt) == 0:  # 첫 번째 텍스트 라인 모드 체크
+            self.lineCnt.append(self.nextNumOfBtnMode(0))
 
         try:
             if boolean:
-                self.btn[self.lineCnt].copyText()
-                self.btn[self.lineCnt].pasteTextPSMode()
+                self.btn[self.lineCnt[0]].copyText()
+                self.btn[self.lineCnt[0]].pasteTextPSMode()
             else:
                 self.resetForProgramError()
         except:
@@ -937,7 +936,7 @@ class MainApp(QMainWindow):
 
     def nextLineCopy(self):
         """다음 텍스트 라인 복사하기 (기본 버튼 모드만 적용)"""
-        temp = self.nextNumOfBtnMode(self.lineCnt + 1)
+        temp = self.nextNumOfBtnMode(self.lineCnt[-1] + 1)
         if temp == -1:  # 마지막 텍스트 라인 복붙했을 때 자동으로 PS 모드 종료
             self.psAutoStartAction.toggle()
             self.psMode.toggle()
@@ -986,16 +985,18 @@ class MainApp(QMainWindow):
 
     def resetAllRecord(self):
         """붙여넣기 흔적을 초기화하는 함수"""
-        self.lineCnt = 0
-        self.lineCntBack = -1
+        self.lineCnt.clear()
+        self.lineCntBack.clear()
         self.lineStatus.setText(" 줄  ")
         self.pasteEdit.setDisabled(True)
         # self.resetRecordAction.setDisabled(True)
         self.resetRecord.setDisabled(True)
 
         for i in self.btn:  # 버튼 토글 초기화
+            if i.isChecked():
+                i.toggle()
             i.pasted = 0
-            i.setLine()
+            i.setStyleOfLine('default')
 
     def changeBackup(self) -> list:
         """현재 텍스트 상태를 백업하는 함수"""
@@ -1073,7 +1074,7 @@ class MainApp(QMainWindow):
 
     def selUpFiveLine(self):
         """다섯 줄 위 텍스트 선택하는 함수"""
-        temp = self.lineCnt - 5
+        temp = self.lineCnt[0] - 5
         if temp < 0:
             self.btn[len(self.btn) + temp].copyText()
         else:
@@ -1081,7 +1082,7 @@ class MainApp(QMainWindow):
 
     def selUpOneLine(self):
         """한 줄 위 텍스트 선택하는 함수"""
-        temp = self.lineCnt - 1
+        temp = self.lineCnt[0] - 1
         if temp < 0:
             self.btn[len(self.btn) + temp].copyText()
         else:
@@ -1089,15 +1090,15 @@ class MainApp(QMainWindow):
 
     def pasteLine(self):
         """붙여넣기 함수"""
-        self.btn[self.lineCnt].pasteText()
+        self.btn[self.lineCnt[0]].pasteText()
 
     def selDownOneLine(self):
         """한 줄 아래 텍스트 선택하는 함수"""
-        self.btn[(self.lineCnt + 1) % len(self.btn)].copyText()
+        self.btn[(self.lineCnt[-1] + 1) % len(self.btn)].copyText()
 
     def selDownFiveLine(self):
         """다섯 줄 아래 텍스트 선택하는 함수"""
-        self.btn[(self.lineCnt + 5) % len(self.btn)].copyText()
+        self.btn[(self.lineCnt[-1] + 5) % len(self.btn)].copyText()
 
     def textFind(self):
         """찾기 창 생성 함수"""
