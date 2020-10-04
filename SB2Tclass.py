@@ -1,4 +1,4 @@
-import win32com.client
+# import win32com.client
 import pythoncom
 import photoshop.api as ps
 from os import remove, path
@@ -21,10 +21,11 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QTabWidget,
     QFontComboBox,
-    QSpinBox
+    QSpinBox,
+    QAction
 )
 from PyQt5.QtGui import QIcon, QFont
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QThread
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QThread, QSize
 
 from pyautogui import hotkey, press, position
 from clipboard import copy, paste
@@ -56,7 +57,11 @@ class TextLine(QPushButton):
                                 # 효과 = effect,
                                 # 배경 = background
         self.clicked.connect(self.copyPasteEvent)
+        self.setIconSize(QSize(24, 24))
         self.setLine()
+        self.setContextMenu()
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.showContextMenu)
 
     def setLine(self):
         """모드에 따라 텍스트 라인을 세팅하는 함수"""
@@ -66,11 +71,14 @@ class TextLine(QPushButton):
 
     def setTextOfLine(self):
         """버튼에 표시되는 텍스트 설정 함수"""
+        self.attribute = 'none'
+        self.setIcon(QIcon(''))
         if self.mode:   # 기본 버튼 모드
             if self.txt[0] == '[':
                 try:
                     index = self.txt.index(']')
                     temp = self.txt[1:index]
+                    self.setText(self.txt[index + 1:])
                     if temp == '대화':
                         self.attribute = 'conversation'
                         self.setIcon(QIcon('icons/conversation.png'))
@@ -89,7 +97,8 @@ class TextLine(QPushButton):
                     elif temp == '배경':
                         self.attribute = 'background'
                         self.setIcon(QIcon('icons/background.png'))
-                    self.setText(self.txt[index + 1:])
+                    if self.act_connection and self.connected_mode != 2:
+                        self.setIcon(QIcon('icons/none.png'))
                 except:
                     self.setText(self.txt)
             else:
@@ -107,9 +116,26 @@ class TextLine(QPushButton):
         last pasted: #ffe0b2 / pasted: #f9f9f9 / 
         connected-act: #ff9800 / connected-deact: #969696
         """
+        bmk = ''
+        border_left = ''
+        if self.parent.bookmark == self.num:
+            border_left = 'border-left: 3px solid #e5aa17;'
+            bmk = (
+                'border-top: 3px solid #e5aa17;'
+                'border-right: 3px solid #e5aa17;'
+                'border-bottom: 3px solid #e5aa17;'
+                'font-weight: bold;'
+                # 'color: #803701'
+                'color: white;'
+            )
+
         if status == 'default':
             if self.pasted == 0:
                 background_color = ''
+                if self.parent.bookmark == self.num:
+                    background_color = 'background-color: #e5aa17;'
+                else:
+                    background_color = ''
             elif self.pasted == 1:
                 background_color = 'background-color: #ffe0b2;'
             elif self.pasted == 2:
@@ -121,41 +147,55 @@ class TextLine(QPushButton):
 
         if self.connected_mode == -1:
             margin = 'margin: 2px 0px;'
-            padding = 'padding: 10px;'
-            border_left = ''
+            if self.attribute != 'none':
+                padding = 'padding: 6px 10px 6px 10px;'
+            else:
+                padding = 'padding: 10px;'
         else:
             if self.connected_mode == 0:
                 margin = 'margin-top: 2px;'
-                padding = 'padding: 10px 10px 5px 10px;'
+                if self.attribute != 'none':
+                    padding = 'padding: 6px 10px 1px 10px;'
+                else:
+                    padding = 'padding: 10px 10px 5px 10px;'
             elif self.connected_mode == 1:
                 margin = ''
-                padding = 'padding: 5px 10px;'
+                if self.attribute != 'none':
+                    padding = 'padding: 1px 10px;'
+                else:
+                    padding = 'padding: 5px 10px;'
             elif self.connected_mode == 2:
                 margin = 'margin-bottom: 2px;'
-                padding = 'padding: 5px 10px 10px 10px;'
+                if self.attribute != 'none':
+                    padding = 'padding: 1px 10px 6px 10px;'
+                else:
+                    padding = 'padding: 5px 10px 10px 10px;'
             if self.act_connection:
                 border_left = 'border-left: 3px solid #ff3d00;'
             else:
                 border_left = 'border-left: 3px solid #969696;'
-                padding = 'padding: 10px;'
+                if self.attribute != 'none':
+                    padding = 'padding: 6px 10px 6px 10px;'
+                else:
+                    padding = 'padding: 10px;'
 
         self.setStyleSheet(self.makeStyleStr(
-            chk_bg_color, background_color, border_left, margin, padding))
+            chk_bg_color, background_color, border_left, margin, padding, bmk))
 
     def makeStyleStr(
-    self, chk_bg_color, background_color, border_left, margin, padding) -> str:
+    self, chk_bg_color, background_color, border_left, margin, padding, bmk) -> str:
         """설정된 속성을 스타일 텍스트에 적용시켜 리턴하는 함수"""
         if self.mode:
             return (
                 " QPushButton {border: none; text-align: left;"
-                + padding + margin + background_color + border_left + "}"
-                " QPushButton:checked {" + chk_bg_color + "}"
-                " QPushButton:hover {background-color: #ffffa8;} ")
+                + padding + margin + background_color + border_left + bmk + "}"
+                " QPushButton:checked {" + chk_bg_color + "color: black;" + "}"
+                " QPushButton:hover {background-color: #ffffa8; color: black;} ")
         else:
             return (
                 " QPushButton {border: none; text-align: left; font-style: italic;"
                 " background-color: #E2E2E2; padding: 5px 10px; "
-                + margin + border_left + "}")
+                + margin + border_left + bmk + "color: black;" + "}")
 
     def setCheckableOfLine(self):
         """모드에 따라 버튼 체크 가능 여부 정하는 함수"""
@@ -192,69 +232,121 @@ class TextLine(QPushButton):
         if self.connected_mode == 1:
             self.parent.btn[self.num - way].setConnectStyle(way, status)
 
-    def contextMenuEvent(self, event):
+    def setContextMenu(self):
         """해당 텍스트 라인 우클릭 시 나타나는 메뉴 이벤트"""
+        self.textEditAction = QAction('텍스트 수정(&E)')
+        self.textEditAction.triggered.connect(self.setTextEditDialog)
+        self.chgToCmtAction = QAction('주석 적용(&C)')
+        self.chgToCmtAction.triggered.connect(lambda: self.changeMode(0))
+        self.chgToBtnAction = QAction('주석 해제(&C)')
+        self.chgToBtnAction.triggered.connect(lambda: self.changeMode(1))
+        self.disconnectAction = QAction('연결 비활성화(&A)')
+        self.disconnectAction.triggered.connect(lambda: self.setActiveConnection(False))
+        self.connectAction = QAction('연결 활성화(&A)')
+        self.connectAction.triggered.connect(lambda: self.setActiveConnection(True))
+        self.delBmkAction = QAction('책갈피 삭제(&B)')
+        self.delBmkAction.triggered.connect(lambda: self.setBookmark(False))
+        self.createBmkAction = QAction('책갈피 생성(&B)')
+        self.createBmkAction.triggered.connect(lambda: self.setBookmark(True))
+        self.con = QAction('대화(&1)')
+        self.con.setCheckable(True)
+        self.con.triggered.connect(lambda: self.changeAttribute('대화', self.con))
+        self.emp = QAction('강조(&2)')
+        self.emp.setCheckable(True)
+        self.emp.triggered.connect(lambda: self.changeAttribute('강조', self.emp))
+        self.nar = QAction('독백(&3)')
+        self.nar.setCheckable(True)
+        self.nar.triggered.connect(lambda: self.changeAttribute('독백', self.nar))
+        self.thk = QAction('생각(&4)')
+        self.thk.setCheckable(True)
+        self.thk.triggered.connect(lambda: self.changeAttribute('생각', self.thk))
+        self.bkg = QAction('배경(&5)')
+        self.bkg.setCheckable(True)
+        self.bkg.triggered.connect(lambda: self.changeAttribute('배경', self.bkg))
+        self.eff = QAction('효과(&6)')
+        self.eff.setCheckable(True)
+        self.eff.triggered.connect(lambda: self.changeAttribute('효과', self.eff))
+
+        self.tag_menu = QMenu('대사 태그 변경(&T)', self)
+        self.tag_menu.addAction(self.con)
+        self.tag_menu.addAction(self.emp)
+        self.tag_menu.addAction(self.nar)
+        self.tag_menu.addAction(self.thk)
+        self.tag_menu.addAction(self.bkg)
+        self.tag_menu.addAction(self.eff)
+
+
+    def showContextMenu(self, pos):
         menu = QMenu(self)
-        textEditAction = menu.addAction("텍스트 수정(&E)")
+        menu.addAction(self.textEditAction)
         menu.addSeparator()
-        changeToCommentAction = menu.addAction("주석 적용(&C)")
-        changeToButtonAction = menu.addAction("주석 해제(&C)")
-        deactivateConnection = menu.addAction("연결 비활성화(&A)")
-        activateConnection = menu.addAction("연결 활성화(&A)")
-        menu.addSeparator()
-        makeBookmark = menu.addAction("책갈피 생성(&B)")
-        deleteBookmark = menu.addAction("책갈피 삭제(&B)")
-
         if self.mode:
-            changeToCommentAction.setVisible(True)
-            changeToButtonAction.setVisible(False)
+            menu.addAction(self.chgToCmtAction)
         else:
-            changeToCommentAction.setVisible(False)
-            changeToButtonAction.setVisible(True)
-        if self.connected_mode == -1:
-            deactivateConnection.setVisible(False)
-            activateConnection.setVisible(False)
-        else:
+            menu.addAction(self.chgToBtnAction)
+        if self.connected_mode != -1:
             if self.act_connection:
-                deactivateConnection.setVisible(True)
-                activateConnection.setVisible(False)
+                menu.addAction(self.disconnectAction)
             else:
-                deactivateConnection.setVisible(False)
-                activateConnection.setVisible(True)
+                menu.addAction(self.connectAction)
+        menu.addSeparator()
         if self.parent.bookmark == self.num:
-            makeBookmark.setVisible(False)
-            deleteBookmark.setVisible(True)
+            menu.addAction(self.delBmkAction)
         else:
-            makeBookmark.setVisible(True)
-            deleteBookmark.setVisible(False)
+            menu.addAction(self.createBmkAction)
+        if self.mode:
+            menu.addSeparator()
+            menu.addMenu(self.tag_menu)
 
-        action = menu.exec_(self.mapToGlobal(event.pos()))  # 우클릭한 지점에서 메뉴 생성
-        if action == changeToCommentAction:
-            self.mode = 0
-            self.setLine()
-            self.parent.recordChange()
-        elif action == changeToButtonAction:
-            self.mode = 1
-            self.setLine()
-            self.parent.recordChange()
-        elif action == deactivateConnection:
-            self.setActiveConnection(False)
-        elif action == activateConnection:
-            self.setActiveConnection(True)
-        elif action == textEditAction:
-            self.setTextEditDialog()
-        elif action == makeBookmark:
-            self.setBookmark(True)
-        elif action == deleteBookmark:
-            self.setBookmark(False)
+        self.con.setChecked(False)
+        self.emp.setChecked(False)
+        self.nar.setChecked(False)
+        self.thk.setChecked(False)
+        self.bkg.setChecked(False)
+        self.eff.setChecked(False)
+        if self.attribute == 'conversation':
+            self.con.setChecked(True)
+        elif self.attribute == 'emphasis':
+            self.emp.setChecked(True)
+        elif self.attribute == 'narration':
+            self.nar.setChecked(True)
+        elif self.attribute == 'think':
+            self.thk.setChecked(True)
+        elif self.attribute == 'background':
+            self.bkg.setChecked(True)
+        elif self.attribute == 'effect':
+            self.eff.setChecked(True)
+        
+        pos = self.mapToGlobal(pos)
+        menu.move(pos)
+        menu.show()
+
+    def changeMode(self, mode):
+        self.mode = mode
+        if self.mode:
+            self.txt = self.txt[1:]
+        else:
+            self.txt = '/' + self.txt
+        self.setLine()
+        self.parent.recordChange()
+
+    def changeAttribute(self, attribute, action):
+        if self.attribute != 'none':
+            index = self.txt.index(']')
+            self.txt = self.txt[index + 1:]
+        if action.isChecked():
+            self.txt = '[' + attribute + ']' + self.txt
+        self.setLine()
+        self.parent.recordChange()
 
     def setBookmark(self, boolean):
         """책갈피 설정하는 함수"""
         fname = self.parent.filepath + '.bmk'
         if boolean:
-            self.setIcon(QIcon('icons/bookmark.png'))
-            self.parent.btn[self.parent.bookmark].setIcon(QIcon(''))
+            back = self.parent.bookmark
             self.parent.bookmark = self.num
+            self.parent.btn[back].setStyleOfLine('default')
+            self.setStyleOfLine('default')
             self.parent.goBmkEdit.setEnabled(True)
             self.parent.goBookmarkAction.setEnabled(True)
             try:
@@ -263,8 +355,8 @@ class TextLine(QPushButton):
             except Exception as e:
                 QMessageBox.warning(self, "오류", "책갈피를 저장하지 못했습니다.\n" + str(e))
         else:
-            self.setIcon(QIcon(''))
             self.parent.bookmark = -1
+            self.setStyleOfLine('default')
             self.parent.goBmkEdit.setDisabled(True)
             self.parent.goBookmarkAction.setDisabled(True)
             try:
@@ -279,7 +371,7 @@ class TextLine(QPushButton):
         i = self.head
         while True:
             self.parent.btn[i].act_connection = boolean
-            self.parent.btn[i].setStyleOfLine('default')
+            self.parent.btn[i].setLine()
             if self.parent.btn[i].connected_mode == 2:
                 break;
             i += 1
@@ -427,11 +519,10 @@ class TextLine(QPushButton):
         """PS 모드 시 적용되는 붙여넣기 함수"""
         while True:
             try:
-                psApp = win32com.client.GetActiveObject("Photoshop.Application")
-                layer = psApp.Application.ActiveDocument.ActiveLayer
-                layer.TextItem.Contents = paste()  # 텍스트 레이어 내용물 변경
+                item = ps.Application().ActiveDocument.ActiveLayer.textItem
+                item.contents = paste()  # 텍스트 레이어 내용물 변경
                 if self.attribute != 'none' and self.parent.currentTextItemStyle != None:
-                    self.setStyleOfTextItem(self.attribute)
+                    self.setStyleOfTextItem(self.attribute, item)
                 self.parent.psAutoThreadStart()
                 break
             except:
@@ -442,11 +533,9 @@ class TextLine(QPushButton):
         # self.parent.resetRecordAction.setEnabled(True)
         self.parent.resetRecord.setEnabled(True)
 
-    def setStyleOfTextItem(self, attribute):
+    def setStyleOfTextItem(self, attribute, item):
         # 임시 #
-        item = ps.Application().ActiveDocument.ActiveLayer.textItem
         currentTIS = self.parent.currentTextItemStyle
-
         if currentTIS[attribute]['activate']:
             if currentTIS[attribute]['font'] != 'none':
                 item.font = currentTIS[attribute]['font']
@@ -924,9 +1013,10 @@ class StartPsThread(QThread):
         pythoncom.CoInitialize()  # 이거 안 하면 스레딩 오류나는 경우가 생김.
         while True:
             try:
-                tempApp = win32com.client.GetActiveObject("Photoshop.Application")
+                app = ps.Application()
+                # tempApp = win32com.client.GetActiveObject("Photoshop.Application")
                 try:
-                    layername = tempApp.Application.ActiveDocument.ActiveLayer.name
+                    layername = app.Application.ActiveDocument.ActiveLayer.name
                     # if layer.kind == 2:  # 이 조건문 다는 순간 포토샵에서 마우스 커서가 오락가락하는 버그 같은 게....
                         # if (layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do"
                         # or ("레이어" in layername) or ("Layer" in layername)):

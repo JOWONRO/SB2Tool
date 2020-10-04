@@ -1,5 +1,5 @@
 import sys
-import win32com.client
+# import win32com.client
 from os.path import basename, exists
 
 from PyQt5.QtWidgets import (
@@ -25,6 +25,8 @@ from PyQt5.QtCore import Qt, QSettings, pyqtSlot
 from pyautogui import hotkey, getWindowsWithTitle, getAllTitles
 from clipboard import copy
 from win32gui import SetForegroundWindow
+from win32process import GetWindowThreadProcessId
+from psutil import Process as Prss
 from multiprocessing import Process, freeze_support
 from re import match
 
@@ -758,7 +760,7 @@ class MainApp(QMainWindow):
             try:
                 with open(fname, 'r') as f:
                     self.bookmark = int(f.readline())
-                self.btn[self.bookmark].setIcon(QIcon('icons/bookmark.png'))
+                self.btn[self.bookmark].setStyleOfLine('default')
                 self.goBmkEdit.setEnabled(True)
                 self.goBookmarkAction.setEnabled(True)
                 self.bmkThread.start()
@@ -813,15 +815,15 @@ class MainApp(QMainWindow):
                 self.autoStartAction.setDisabled(True)
                 self.startMode.setDisabled(True)
             else:
+                try:
+                    self.selectedProgram = getWindowsWithTitle(item)[0]
+                except:
+                    self.resetForProgramError()
                 self.ProgramSettingOn = True
                 if len(self.btn) != 0:
                     self.autoStartAction.setEnabled(True)
                     self.startMode.setEnabled(True)
                     self.checkPhotoshop()
-                try:
-                    self.selectedProgram = getWindowsWithTitle(item)[0]
-                except:
-                    self.resetForProgramError()
                 self.statusbarmain.showMessage("프로그램 지정 완료", 5000)
 
     def advSettingsDialogShow(self):
@@ -837,11 +839,18 @@ class MainApp(QMainWindow):
         # self.psMode.setDisabled(True)
         # check = False
         try:
-            temp = win32com.client.GetActiveObject("Photoshop.Application")  # 포토샵 앱 불러오기
-            self.psAutoStartAction.setEnabled(True)
-            self.psMode.setEnabled(True)
-            self.psTISsettings.setEnabled(True)
-            self.psTISsettingsAction.setEnabled(True)
+            threadid, pid = GetWindowThreadProcessId(self.selectedProgram._hWnd)
+            if 'Photoshop' in Prss(pid).name():
+            # temp = win32com.client.GetActiveObject("Photoshop.Application")  # 포토샵 앱 불러오기
+                self.psAutoStartAction.setEnabled(True)
+                self.psMode.setEnabled(True)
+                self.psTISsettings.setEnabled(True)
+                self.psTISsettingsAction.setEnabled(True)
+            else:
+                self.psAutoStartAction.setDisabled(True)
+                self.psMode.setDisabled(True)
+                self.psTISsettings.setDisabled(True)
+                self.psTISsettingsAction.setDisabled(True)
             # 여러 변수를 고려하여 포토샵이 실행만 되어 있으면 활성화되는 것으로 변경
             # if "Photoshop" in self.selectedProgramTitle:
             #     check = True
@@ -862,7 +871,7 @@ class MainApp(QMainWindow):
             #         QMessageBox.warning(self, "포토샵 모드 오류",
             #         "레이어를 닫은 다음에\n다시 지정해 주세요.")
         except Exception as e:
-            # QMessageBox.warning(self, "포토샵 모드 오류", str(e))
+            QMessageBox.warning(self, "포토샵 체크 오류", str(e))
             self.psAutoStartAction.setDisabled(True)
             self.psMode.setDisabled(True)
             self.psTISsettings.setDisabled(True)
