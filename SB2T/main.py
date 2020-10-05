@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QFileDialog,
     QDialog,
-    QApplication,
     QWidget,
     QPushButton,
     QToolBar,
@@ -29,18 +28,15 @@ from psutil import Process as Prss
 from multiprocessing import Process
 from re import match
 
-from SB2Tclass import (
-    TextLine,
+from SB2T.obj import TextLine, MacroStartwithProcess, AttributeOfTextItem
+from SB2T.dialog import (
     AdvSettingsDialog,
     TextFindDialog,
     TextChangeDialog,
-    StartPsThread,
     MacroSetDialog,
-    MacroStartwithProcess,
-    CheckBmkThread,
-    AttributeOfTextItem,
     TextItemStyleDialog
 )
+from SB2T.thread import StartPsThread, CheckBmkThread
 
 
 # =====================================메인 시작===================================
@@ -1040,6 +1036,10 @@ class MainApp(QMainWindow):
         self.lineCntBack.clear()
         self.lineStatus.setText(" 줄  ")
         self.pasteEdit.setDisabled(True)
+        self.fiveUpEdit.setDisabled(True)
+        self.oneUpEdit.setDisabled(True)
+        self.oneDownEdit.setDisabled(True)
+        self.fiveDownEdit.setDisabled(True)
         # self.resetRecordAction.setDisabled(True)
         self.resetRecord.setDisabled(True)
 
@@ -1125,19 +1125,23 @@ class MainApp(QMainWindow):
 
     def selUpFiveLine(self):
         """다섯 줄 위 텍스트 선택하는 함수"""
-        temp = self.lineCnt[0] - 5
-        if temp < 0:
-            self.btn[len(self.btn) + temp].copyText()
-        else:
-            self.btn[temp].copyText()
+        num = self.lineCnt[0]
+        i = 0
+        while i < 5:
+            num -= 1
+            if self.btn[num].mode == 1:
+                i += 1
+                if self.btn[num].act_connection == 1:
+                    num = self.btn[num].head
+        self.btn[num].copyText()
 
     def selUpOneLine(self):
         """한 줄 위 텍스트 선택하는 함수"""
-        temp = self.lineCnt[0] - 1
-        if temp < 0:
-            self.btn[len(self.btn) + temp].copyText()
-        else:
-            self.btn[temp].copyText()
+        num = self.lineCnt[0]
+        num -= 1
+        while self.btn[num].mode != 1:
+            num -= 1
+        self.btn[num].copyText()
 
     def pasteLine(self):
         """붙여넣기 함수"""
@@ -1145,11 +1149,24 @@ class MainApp(QMainWindow):
 
     def selDownOneLine(self):
         """한 줄 아래 텍스트 선택하는 함수"""
-        self.btn[(self.lineCnt[-1] + 1) % len(self.btn)].copyText()
+        num = self.lineCnt[-1]
+        num = (num + 1) % len(self.btn)
+        while self.btn[num].mode != 1:
+            num = (num + 1) % len(self.btn)
+        self.btn[num].copyText()
 
     def selDownFiveLine(self):
         """다섯 줄 아래 텍스트 선택하는 함수"""
-        self.btn[(self.lineCnt[-1] + 5) % len(self.btn)].copyText()
+        num = self.lineCnt[-1]
+        i = 0
+        while i < 5:
+            num = (num + 1) % len(self.btn)
+            if self.btn[num].mode == 1:
+                i += 1
+                if self.btn[num].act_connection == 1:
+                    while self.btn[num].connected_mode != 2:
+                        num = (num + 1) % len(self.btn)
+        self.btn[num].copyText()
 
     def textFind(self):
         """찾기 창 생성 함수"""
@@ -1380,5 +1397,4 @@ class MainApp(QMainWindow):
         self.settings.setValue("MacroList", self.macroList)
         self.settings.setValue("TextItemsSettings", self.textItemStyleList)
         self.settings.setValue("CurrentTextItem", self.currentTextItemStyle)
-
 

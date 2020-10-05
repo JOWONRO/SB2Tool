@@ -1,6 +1,9 @@
-from SB2T.main import MainApp
+from .main import MainApp
 
-__all__ = ['MainApp']
+
+__all__ = [
+    'MainApp'
+]
 
 __title__ = "식붕이툴"
 __version__ = "Beta3.2"

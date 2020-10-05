@@ -3,7 +3,7 @@
 block_cipher = None
 
 
-a = Analysis(['SB2Tmain.py'],
+a = Analysis(['SB2Tool.py'],
              pathex=['D:\\coding\\git\\SB2Tool'],
              binaries=[],
              datas=[],
