@@ -648,7 +648,7 @@ class AdvSettingsDialog(QDialog):
         self.setLayout(grid)
 
         self.setWindowTitle('고급 설정')
-        self.setWindowIcon(QIcon(self.parent.AdvSetIcon))
+        self.setWindowIcon(QIcon("icons/advset.png"))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 50, y + 70)
         self.exec()
@@ -843,7 +843,7 @@ class TextFindDialog(QDialog):
         self.grid.addWidget(self.resultlbl, 1, 0)
 
         self.setWindowTitle('텍스트 찾기')
-        self.setWindowIcon(QIcon(self.parent.FindIcon))
+        self.setWindowIcon(QIcon("icons/find.png"))
         self.show()  # 이게 있어야 찾기 창 띄워 놓고 딴 짓 가능
 
         self.textedit.textChanged.connect(self.findit)
@@ -927,7 +927,7 @@ class TextChangeDialog(QDialog):
         self.grid.addWidget(self.btn3, 1, 3)
 
         self.setWindowTitle('텍스트 바꾸기')
-        self.setWindowIcon(QIcon(self.parent.ChangeIcon))
+        self.setWindowIcon(QIcon('icons/change.png'))
         self.show()  # 이게 있어야 찾기 창 띄워 놓고 딴 짓 가능
 
         self.textedit1.textChanged.connect(self.findit)
@@ -1152,7 +1152,7 @@ class MacroSetDialog(QDialog):
         self.setLayout(grid)
 
         self.setWindowTitle('키보드 매크로 설정')
-        self.setWindowIcon(QIcon(self.parent.SetMacroIcon))
+        self.setWindowIcon(QIcon('icons/setmacro.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 30, y + 120)
         self.exec()
@@ -1288,7 +1288,7 @@ class MacroAddDialog(QDialog):
                     self.btnA2.setText(temp[4])
             self.setWindowTitle('매크로 수정')
 
-        self.setWindowIcon(QIcon(self.parent.parent.SetMacroIcon))
+        self.setWindowIcon(QIcon('icons/setmacro.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 30, y + 30)
         self.exec()
@@ -1414,7 +1414,7 @@ class KeyReadDialog(QDialog):
         self.keyThread.start()
         self.keyThread.keyReadSignal.connect(self.keyRead)
 
-        self.setWindowIcon(QIcon(self.parent.parent.parent.SetMacroIcon))
+        self.setWindowIcon(QIcon('icons/setmacro.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 80, y + 50)
         self.exec()

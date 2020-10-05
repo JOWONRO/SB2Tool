@@ -1,4 +1,3 @@
-import sys
 # import win32com.client
 from os.path import basename, exists
 
@@ -27,7 +26,7 @@ from clipboard import copy
 from win32gui import SetForegroundWindow
 from win32process import GetWindowThreadProcessId
 from psutil import Process as Prss
-from multiprocessing import Process, freeze_support
+from multiprocessing import Process
 from re import match
 
 from SB2Tclass import (
@@ -1382,14 +1381,4 @@ class MainApp(QMainWindow):
         self.settings.setValue("TextItemsSettings", self.textItemStyleList)
         self.settings.setValue("CurrentTextItem", self.currentTextItemStyle)
 
-# ================================메인 끝=====================================
-
-
-if __name__ == '__main__':  # 메인 실행 함수
-    freeze_support()  # 이거 없으면 매크로 프로세스 실행 시 똑같은 메인 윈도우창이 나타나는 오류 발생
-
-    app = QApplication(sys.argv)
-    app.setAttribute(Qt.AA_DisableWindowContextHelpButton)  # 이걸로 다이얼로그에서 ? 를 없앨 수 있음
-    ex = MainApp()
-    sys.exit(app.exec_())
 
