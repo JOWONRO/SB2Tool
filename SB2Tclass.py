@@ -1,8 +1,10 @@
-import win32com.client
+# import win32com.client
 import pythoncom
+import photoshop.api as ps
 from os import remove, path
 
 from PyQt5.QtWidgets import (
+    QWidget,
     QMessageBox,
     QDialog,
     QPushButton,
@@ -15,10 +17,15 @@ from PyQt5.QtWidgets import (
     QGroupBox,
     QListWidget,
     QProgressBar,
-    QMenu
+    QMenu,
+    QComboBox,
+    QTabWidget,
+    QFontComboBox,
+    QSpinBox,
+    QAction
 )
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QThread
+from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QThread, QSize
 
 from pyautogui import hotkey, press, position
 from clipboard import copy, paste
@@ -43,9 +50,18 @@ class TextLine(QPushButton):
         self.act_connection = 0
         if self.connected_mode != -1:
             self.act_connection = 1
-
+        self.attribute = 'none' # 대화 = conversation, 
+                                # 생각 = think,
+                                # 독백 = narration,
+                                # 강조 = emphasis,
+                                # 효과 = effect,
+                                # 배경 = background
         self.clicked.connect(self.copyPasteEvent)
+        self.setIconSize(QSize(24, 24))
         self.setLine()
+        self.setContextMenu()
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.showContextMenu)
 
     def setLine(self):
         """모드에 따라 텍스트 라인을 세팅하는 함수"""
@@ -55,8 +71,38 @@ class TextLine(QPushButton):
 
     def setTextOfLine(self):
         """버튼에 표시되는 텍스트 설정 함수"""
+        self.attribute = 'none'
+        self.setIcon(QIcon(''))
         if self.mode:   # 기본 버튼 모드
-            self.setText(self.txt)
+            if self.txt[0] == '[':
+                try:
+                    index = self.txt.index(']')
+                    temp = self.txt[1:index]
+                    self.setText(self.txt[index + 1:])
+                    if temp == '대화':
+                        self.attribute = 'conversation'
+                        self.setIcon(QIcon('icons/conversation.png'))
+                    elif temp == '생각':
+                        self.attribute = 'think'
+                        self.setIcon(QIcon('icons/think.png'))
+                    elif temp == '독백':
+                        self.attribute = 'narration'
+                        self.setIcon(QIcon('icons/narration.png'))
+                    elif temp == '강조':
+                        self.attribute = 'emphasis'
+                        self.setIcon(QIcon('icons/emphasis.png'))
+                    elif temp == '효과':
+                        self.attribute = 'effect'
+                        self.setIcon(QIcon('icons/effect.png'))
+                    elif temp == '배경':
+                        self.attribute = 'background'
+                        self.setIcon(QIcon('icons/background.png'))
+                    if self.act_connection and self.connected_mode != 2:
+                        self.setIcon(QIcon('icons/none.png'))
+                except:
+                    self.setText(self.txt)
+            else:
+                self.setText(self.txt)
         else:   # 주석 처리
             if self.txt[0] == '/' or self.txt[0] == '`':
                 self.setText(self.txt[1:])
@@ -70,9 +116,26 @@ class TextLine(QPushButton):
         last pasted: #ffe0b2 / pasted: #f9f9f9 / 
         connected-act: #ff9800 / connected-deact: #969696
         """
+        bmk = ''
+        border_left = ''
+        if self.parent.bookmark == self.num:
+            border_left = 'border-left: 3px solid #e5aa17;'
+            bmk = (
+                'border-top: 3px solid #e5aa17;'
+                'border-right: 3px solid #e5aa17;'
+                'border-bottom: 3px solid #e5aa17;'
+                'font-weight: bold;'
+                # 'color: #803701'
+                'color: white;'
+            )
+
         if status == 'default':
             if self.pasted == 0:
                 background_color = ''
+                if self.parent.bookmark == self.num:
+                    background_color = 'background-color: #e5aa17;'
+                else:
+                    background_color = ''
             elif self.pasted == 1:
                 background_color = 'background-color: #ffe0b2;'
             elif self.pasted == 2:
@@ -84,41 +147,55 @@ class TextLine(QPushButton):
 
         if self.connected_mode == -1:
             margin = 'margin: 2px 0px;'
-            padding = 'padding: 10px;'
-            border_left = ''
+            if self.attribute != 'none':
+                padding = 'padding: 6px 10px 6px 10px;'
+            else:
+                padding = 'padding: 10px;'
         else:
             if self.connected_mode == 0:
                 margin = 'margin-top: 2px;'
-                padding = 'padding: 10px 10px 5px 10px;'
+                if self.attribute != 'none':
+                    padding = 'padding: 6px 10px 1px 10px;'
+                else:
+                    padding = 'padding: 10px 10px 5px 10px;'
             elif self.connected_mode == 1:
                 margin = ''
-                padding = 'padding: 5px 10px;'
+                if self.attribute != 'none':
+                    padding = 'padding: 1px 10px;'
+                else:
+                    padding = 'padding: 5px 10px;'
             elif self.connected_mode == 2:
                 margin = 'margin-bottom: 2px;'
-                padding = 'padding: 5px 10px 10px 10px;'
+                if self.attribute != 'none':
+                    padding = 'padding: 1px 10px 6px 10px;'
+                else:
+                    padding = 'padding: 5px 10px 10px 10px;'
             if self.act_connection:
                 border_left = 'border-left: 3px solid #ff3d00;'
             else:
                 border_left = 'border-left: 3px solid #969696;'
-                padding = 'padding: 10px;'
+                if self.attribute != 'none':
+                    padding = 'padding: 6px 10px 6px 10px;'
+                else:
+                    padding = 'padding: 10px;'
 
         self.setStyleSheet(self.makeStyleStr(
-            chk_bg_color, background_color, border_left, margin, padding))
+            chk_bg_color, background_color, border_left, margin, padding, bmk))
 
     def makeStyleStr(
-    self, chk_bg_color, background_color, border_left, margin, padding) -> str:
+    self, chk_bg_color, background_color, border_left, margin, padding, bmk) -> str:
         """설정된 속성을 스타일 텍스트에 적용시켜 리턴하는 함수"""
         if self.mode:
             return (
                 " QPushButton {border: none; text-align: left;"
-                + padding + margin + background_color + border_left + "}"
-                " QPushButton:checked {" + chk_bg_color + "}"
-                " QPushButton:hover {background-color: #ffffa8;} ")
+                + padding + margin + background_color + border_left + bmk + "}"
+                " QPushButton:checked {" + chk_bg_color + "color: black;" + "}"
+                " QPushButton:hover {background-color: #ffffa8; color: black;} ")
         else:
             return (
                 " QPushButton {border: none; text-align: left; font-style: italic;"
                 " background-color: #E2E2E2; padding: 5px 10px; "
-                + margin + border_left + "}")
+                + margin + border_left + bmk + "color: black;" + "}")
 
     def setCheckableOfLine(self):
         """모드에 따라 버튼 체크 가능 여부 정하는 함수"""
@@ -155,69 +232,121 @@ class TextLine(QPushButton):
         if self.connected_mode == 1:
             self.parent.btn[self.num - way].setConnectStyle(way, status)
 
-    def contextMenuEvent(self, event):
+    def setContextMenu(self):
         """해당 텍스트 라인 우클릭 시 나타나는 메뉴 이벤트"""
+        self.textEditAction = QAction('텍스트 수정(&E)')
+        self.textEditAction.triggered.connect(self.setTextEditDialog)
+        self.chgToCmtAction = QAction('주석 적용(&C)')
+        self.chgToCmtAction.triggered.connect(lambda: self.changeMode(0))
+        self.chgToBtnAction = QAction('주석 해제(&C)')
+        self.chgToBtnAction.triggered.connect(lambda: self.changeMode(1))
+        self.disconnectAction = QAction('연결 비활성화(&A)')
+        self.disconnectAction.triggered.connect(lambda: self.setActiveConnection(False))
+        self.connectAction = QAction('연결 활성화(&A)')
+        self.connectAction.triggered.connect(lambda: self.setActiveConnection(True))
+        self.delBmkAction = QAction('책갈피 삭제(&B)')
+        self.delBmkAction.triggered.connect(lambda: self.setBookmark(False))
+        self.createBmkAction = QAction('책갈피 생성(&B)')
+        self.createBmkAction.triggered.connect(lambda: self.setBookmark(True))
+        self.con = QAction('대화(&1)')
+        self.con.setCheckable(True)
+        self.con.triggered.connect(lambda: self.changeAttribute('대화', self.con))
+        self.emp = QAction('강조(&2)')
+        self.emp.setCheckable(True)
+        self.emp.triggered.connect(lambda: self.changeAttribute('강조', self.emp))
+        self.nar = QAction('독백(&3)')
+        self.nar.setCheckable(True)
+        self.nar.triggered.connect(lambda: self.changeAttribute('독백', self.nar))
+        self.thk = QAction('생각(&4)')
+        self.thk.setCheckable(True)
+        self.thk.triggered.connect(lambda: self.changeAttribute('생각', self.thk))
+        self.bkg = QAction('배경(&5)')
+        self.bkg.setCheckable(True)
+        self.bkg.triggered.connect(lambda: self.changeAttribute('배경', self.bkg))
+        self.eff = QAction('효과(&6)')
+        self.eff.setCheckable(True)
+        self.eff.triggered.connect(lambda: self.changeAttribute('효과', self.eff))
+
+        self.tag_menu = QMenu('대사 태그 변경(&T)', self)
+        self.tag_menu.addAction(self.con)
+        self.tag_menu.addAction(self.emp)
+        self.tag_menu.addAction(self.nar)
+        self.tag_menu.addAction(self.thk)
+        self.tag_menu.addAction(self.bkg)
+        self.tag_menu.addAction(self.eff)
+
+
+    def showContextMenu(self, pos):
         menu = QMenu(self)
-        textEditAction = menu.addAction("텍스트 수정(&E)")
+        menu.addAction(self.textEditAction)
         menu.addSeparator()
-        changeToCommentAction = menu.addAction("주석 적용(&C)")
-        changeToButtonAction = menu.addAction("주석 해제(&C)")
-        deactivateConnection = menu.addAction("연결 비활성화(&A)")
-        activateConnection = menu.addAction("연결 활성화(&A)")
-        menu.addSeparator()
-        makeBookmark = menu.addAction("책갈피 생성(&B)")
-        deleteBookmark = menu.addAction("책갈피 삭제(&B)")
-
         if self.mode:
-            changeToCommentAction.setVisible(True)
-            changeToButtonAction.setVisible(False)
+            menu.addAction(self.chgToCmtAction)
         else:
-            changeToCommentAction.setVisible(False)
-            changeToButtonAction.setVisible(True)
-        if self.connected_mode == -1:
-            deactivateConnection.setVisible(False)
-            activateConnection.setVisible(False)
-        else:
+            menu.addAction(self.chgToBtnAction)
+        if self.connected_mode != -1:
             if self.act_connection:
-                deactivateConnection.setVisible(True)
-                activateConnection.setVisible(False)
+                menu.addAction(self.disconnectAction)
             else:
-                deactivateConnection.setVisible(False)
-                activateConnection.setVisible(True)
+                menu.addAction(self.connectAction)
+        menu.addSeparator()
         if self.parent.bookmark == self.num:
-            makeBookmark.setVisible(False)
-            deleteBookmark.setVisible(True)
+            menu.addAction(self.delBmkAction)
         else:
-            makeBookmark.setVisible(True)
-            deleteBookmark.setVisible(False)
+            menu.addAction(self.createBmkAction)
+        if self.mode:
+            menu.addSeparator()
+            menu.addMenu(self.tag_menu)
 
-        action = menu.exec_(self.mapToGlobal(event.pos()))  # 우클릭한 지점에서 메뉴 생성
-        if action == changeToCommentAction:
-            self.mode = 0
-            self.setLine()
-            self.parent.recordChange()
-        elif action == changeToButtonAction:
-            self.mode = 1
-            self.setLine()
-            self.parent.recordChange()
-        elif action == deactivateConnection:
-            self.setActiveConnection(False)
-        elif action == activateConnection:
-            self.setActiveConnection(True)
-        elif action == textEditAction:
-            self.setTextEditDialog()
-        elif action == makeBookmark:
-            self.setBookmark(True)
-        elif action == deleteBookmark:
-            self.setBookmark(False)
+        self.con.setChecked(False)
+        self.emp.setChecked(False)
+        self.nar.setChecked(False)
+        self.thk.setChecked(False)
+        self.bkg.setChecked(False)
+        self.eff.setChecked(False)
+        if self.attribute == 'conversation':
+            self.con.setChecked(True)
+        elif self.attribute == 'emphasis':
+            self.emp.setChecked(True)
+        elif self.attribute == 'narration':
+            self.nar.setChecked(True)
+        elif self.attribute == 'think':
+            self.thk.setChecked(True)
+        elif self.attribute == 'background':
+            self.bkg.setChecked(True)
+        elif self.attribute == 'effect':
+            self.eff.setChecked(True)
+        
+        pos = self.mapToGlobal(pos)
+        menu.move(pos)
+        menu.show()
+
+    def changeMode(self, mode):
+        self.mode = mode
+        if self.mode:
+            self.txt = self.txt[1:]
+        else:
+            self.txt = '/' + self.txt
+        self.setLine()
+        self.parent.recordChange()
+
+    def changeAttribute(self, attribute, action):
+        if self.attribute != 'none':
+            index = self.txt.index(']')
+            self.txt = self.txt[index + 1:]
+        if action.isChecked():
+            self.txt = '[' + attribute + ']' + self.txt
+        self.setLine()
+        self.parent.recordChange()
 
     def setBookmark(self, boolean):
         """책갈피 설정하는 함수"""
         fname = self.parent.filepath + '.bmk'
         if boolean:
-            self.setIcon(QIcon('icons/bookmark.png'))
-            self.parent.btn[self.parent.bookmark].setIcon(QIcon(''))
+            back = self.parent.bookmark
             self.parent.bookmark = self.num
+            self.parent.btn[back].setStyleOfLine('default')
+            self.setStyleOfLine('default')
             self.parent.goBmkEdit.setEnabled(True)
             self.parent.goBookmarkAction.setEnabled(True)
             try:
@@ -226,8 +355,8 @@ class TextLine(QPushButton):
             except Exception as e:
                 QMessageBox.warning(self, "오류", "책갈피를 저장하지 못했습니다.\n" + str(e))
         else:
-            self.setIcon(QIcon(''))
             self.parent.bookmark = -1
+            self.setStyleOfLine('default')
             self.parent.goBmkEdit.setDisabled(True)
             self.parent.goBookmarkAction.setDisabled(True)
             try:
@@ -242,7 +371,7 @@ class TextLine(QPushButton):
         i = self.head
         while True:
             self.parent.btn[i].act_connection = boolean
-            self.parent.btn[i].setStyleOfLine('default')
+            self.parent.btn[i].setLine()
             if self.parent.btn[i].connected_mode == 2:
                 break;
             i += 1
@@ -265,7 +394,7 @@ class TextLine(QPushButton):
     def whatTxtForCopy(self) -> str:
         """실제 복사할 텍스트를 반환하는 함수\n
         소괄호, 중괄호, 대괄호, 큰따음표, 작은따음표 제외 복사 기능 포함"""
-        temptxt = self.txt
+        temptxt = self.text()
         if self.parent.exceptbrackets:   # 괄호문을 인식하여 괄호만 빼고 복사
             if temptxt[0] == '(' and temptxt[len(temptxt) - 1] == ')':
                 temptxt = temptxt[1:len(temptxt) - 1]
@@ -311,7 +440,7 @@ class TextLine(QPushButton):
                 self.parent.btn[i].setChecked(True)
                 self.parent.lineCnt.append(i)
                 if self.parent.btn[i].connected_mode != 2:
-                    temptxt = temptxt + '\n'
+                    temptxt = temptxt + '\r'  # \n 경우, 포토샵에 붙여넣기 할 때 개행으로 인식 안 됨
 
             if self.parent.btn[i].connected_mode == 2:
                 break
@@ -372,12 +501,13 @@ class TextLine(QPushButton):
         self.parent.pasteEdit.setDisabled(True)
         time.sleep(.1)  # 이렇게 안 해주면 PS 모드 동시 사용 시 다음 라인이 복붙되는 현상 발생
 
-        if self.parent.pasteCtrlEnter:  # 포토샵 한정 자동 레이어 닫기 여부
-            try:
-                psApp = win32com.client.GetActiveObject("Photoshop.Application")
+        if self.parent.psAutoStartAction.isEnabled():
+            if self.attribute != 'none' and self.parent.currentTextItemStyle != None:
                 hotkey('ctrl', 'enter')
-            except:
-                pass
+                self.setStyleOfTextItem(self.attribute)
+            else:
+                if self.parent.pasteCtrlEnter:  # 포토샵 한정 자동 레이어 닫기 여부
+                    hotkey('ctrl', 'enter')
 
         self.setTraceTextLine()
         if self.parent.psAutoStartAction.isChecked():  # PS 모드 동시 사용 시 다음 라인 자동 복사
@@ -389,9 +519,10 @@ class TextLine(QPushButton):
         """PS 모드 시 적용되는 붙여넣기 함수"""
         while True:
             try:
-                psApp = win32com.client.GetActiveObject("Photoshop.Application")
-                layer = psApp.Application.ActiveDocument.ActiveLayer
-                layer.TextItem.Contents = paste()  # 텍스트 레이어 내용물 변경
+                item = ps.Application().ActiveDocument.ActiveLayer.textItem
+                item.contents = paste()  # 텍스트 레이어 내용물 변경
+                if self.attribute != 'none' and self.parent.currentTextItemStyle != None:
+                    self.setStyleOfTextItem(self.attribute, item)
                 self.parent.psAutoThreadStart()
                 break
             except:
@@ -401,6 +532,30 @@ class TextLine(QPushButton):
         self.parent.nextLineCopy()
         # self.parent.resetRecordAction.setEnabled(True)
         self.parent.resetRecord.setEnabled(True)
+
+    def setStyleOfTextItem(self, attribute, item):
+        # 임시 #
+        currentTIS = self.parent.currentTextItemStyle
+        if currentTIS[attribute]['activate']:
+            if currentTIS[attribute]['font'] != 'none':
+                item.font = currentTIS[attribute]['font']
+            if currentTIS[attribute]['size'] != 'none':
+                item.size = currentTIS[attribute]['size']
+            if currentTIS[attribute]['leading'] != 'none':
+                item.leading = currentTIS[attribute]['leading']
+            if currentTIS[attribute]['tracking'] != 'none':
+                item.tracking = currentTIS[attribute]['tracking']
+            if currentTIS[attribute]['fauxBold'] != 'none':
+                item.fauxBold = currentTIS[attribute]['fauxBold']
+            if currentTIS[attribute]['fauxItalic'] != 'none':
+                item.fauxItalic = currentTIS[attribute]['fauxItalic']
+            if currentTIS[attribute]['horizontalScale'] != 'none':
+                item.horizontalScale = currentTIS[attribute]['horizontalScale']
+            if currentTIS[attribute]['verticalScale'] != 'none':
+                item.verticalScale = currentTIS[attribute]['verticalScale']
+        # layer.textItem.height = 100
+        # layer.textItem.width = 200
+        # layer.textItem.position = [10, 10]
 
     def setTraceTextLine(self): 
         """텍스트 라인 색상 바꾸는 함수 (흔적 남기기)"""
@@ -432,7 +587,7 @@ class TextEditDialog(QDialog):
     """텍스트 라인의 텍스트 수정 창 생성 함수"""
 
     def __init__(self, parent):
-        super().__init__()
+        super().__init__(None, Qt.WindowStaysOnTopHint)
         self.parent = parent
 
         lineEdit = QLineEdit()
@@ -475,7 +630,7 @@ class AdvSettingsDialog(QDialog):
     """
 
     def __init__(self, parent):
-        super().__init__()
+        super().__init__(None, Qt.WindowStaysOnTopHint)
         self.parent = parent
 
         btn = QPushButton('OK')
@@ -493,9 +648,9 @@ class AdvSettingsDialog(QDialog):
         self.setLayout(grid)
 
         self.setWindowTitle('고급 설정')
-        self.setWindowIcon(QIcon(self.parent.AdvSetIcon))
+        self.setWindowIcon(QIcon("icons/advset.png"))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
-        self.move(x + 50, y + 150)
+        self.move(x + 50, y + 70)
         self.exec()
 
     def createExceptCopyGroup(self) -> QGroupBox:
@@ -562,6 +717,11 @@ class AdvSettingsDialog(QDialog):
         self.uicheckbox3.setChecked(self.parent.commentWithP)
         self.uicheckbox3.stateChanged.connect(self.setCommentWithP)
 
+        self.subtitle3 = QLabel('기타: ')
+        self.uicheckbox4 = QCheckBox("실행 시 창을 항상 위에 고정 (다음 실행 때 반영)")
+        self.uicheckbox4.setChecked(self.parent.onTopDefault)
+        self.uicheckbox4.stateChanged.connect(self.setOnTopDefault)
+
         vbox = QVBoxLayout()
         vbox.addWidget(self.subtitle1)
         vbox.addWidget(self.uicheckbox1)
@@ -570,6 +730,10 @@ class AdvSettingsDialog(QDialog):
         vbox.addWidget(self.subtitle2)
         vbox.addWidget(self.uicheckbox2)
         vbox.addWidget(self.uicheckbox3)
+        vbox.addStretch(1)
+        vbox.addWidget(self.space)
+        vbox.addWidget(self.subtitle3)
+        vbox.addWidget(self.uicheckbox4)
         vbox.addStretch(1)
         groupbox.setLayout(vbox)
 
@@ -639,13 +803,20 @@ class AdvSettingsDialog(QDialog):
             self.parent.commentWithP = 0
         self.parent.advSettingsList[7] = self.parent.commentWithP
 
+    def setOnTopDefault(self):
+        """항상 위에 고정 여부 함수"""
+        if self.uicheckbox4.isChecked():
+            self.parent.onTopDefault = 1
+        else:
+            self.parent.onTopDefault = 0
+        self.parent.advSettingsList[8] = self.parent.onTopDefault
+
 
 class TextFindDialog(QDialog):
     """특정 텍스트 찾기 창 클래스"""
     
     def __init__(self, parent):
-        super().__init__()
-        QDialog.__init__(self, None, Qt.WindowStaysOnTopHint)  # 항상 최상위 고정
+        super().__init__(None, Qt.WindowStaysOnTopHint)
         self.parent = parent
 
         self.index = 0
@@ -672,7 +843,7 @@ class TextFindDialog(QDialog):
         self.grid.addWidget(self.resultlbl, 1, 0)
 
         self.setWindowTitle('텍스트 찾기')
-        self.setWindowIcon(QIcon(self.parent.FindIcon))
+        self.setWindowIcon(QIcon("icons/find.png"))
         self.show()  # 이게 있어야 찾기 창 띄워 놓고 딴 짓 가능
 
         self.textedit.textChanged.connect(self.findit)
@@ -719,8 +890,7 @@ class TextChangeDialog(QDialog):
     """텍스트 바꾸기 창 클래스"""
     
     def __init__(self, parent):
-        super().__init__()
-        QDialog.__init__(self, None, Qt.WindowStaysOnTopHint)
+        super().__init__(None, Qt.WindowStaysOnTopHint)
         self.parent = parent
 
         self.index = 0
@@ -757,7 +927,7 @@ class TextChangeDialog(QDialog):
         self.grid.addWidget(self.btn3, 1, 3)
 
         self.setWindowTitle('텍스트 바꾸기')
-        self.setWindowIcon(QIcon(self.parent.ChangeIcon))
+        self.setWindowIcon(QIcon('icons/change.png'))
         self.show()  # 이게 있어야 찾기 창 띄워 놓고 딴 짓 가능
 
         self.textedit1.textChanged.connect(self.findit)
@@ -843,9 +1013,10 @@ class StartPsThread(QThread):
         pythoncom.CoInitialize()  # 이거 안 하면 스레딩 오류나는 경우가 생김.
         while True:
             try:
-                tempApp = win32com.client.GetActiveObject("Photoshop.Application")
+                app = ps.Application()
+                # tempApp = win32com.client.GetActiveObject("Photoshop.Application")
                 try:
-                    layername = tempApp.Application.ActiveDocument.ActiveLayer.name
+                    layername = app.Application.ActiveDocument.ActiveLayer.name
                     # if layer.kind == 2:  # 이 조건문 다는 순간 포토샵에서 마우스 커서가 오락가락하는 버그 같은 게....
                         # if (layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do"
                         # or ("레이어" in layername) or ("Layer" in layername)):
@@ -934,7 +1105,7 @@ class MacroSetDialog(QDialog):
     """매크로 설정 창 클래스"""
 
     def __init__(self, parent):
-        super().__init__()
+        super().__init__(None, Qt.WindowStaysOnTopHint)
         self.parent = parent
 
         self.selectedItem = -1
@@ -981,7 +1152,7 @@ class MacroSetDialog(QDialog):
         self.setLayout(grid)
 
         self.setWindowTitle('키보드 매크로 설정')
-        self.setWindowIcon(QIcon(self.parent.SetMacroIcon))
+        self.setWindowIcon(QIcon('icons/setmacro.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 30, y + 120)
         self.exec()
@@ -1001,6 +1172,10 @@ class MacroSetDialog(QDialog):
     def addMacro(self):
         """매크로 추가 창 생성하는 함수"""
         addDialog = MacroAddDialog(self, 'none')
+        self.btn2.setDisabled(True)
+        self.btn3.setDisabled(True)
+        self.btn4.setDisabled(True)
+        self.btn5.setDisabled(True)
 
     def modifyMacro(self):
         """매크로 수정 창 생성하는 함수"""
@@ -1066,7 +1241,7 @@ class MacroAddDialog(QDialog):
     """매크로 추가 및 수정 창 클래스"""
     
     def __init__(self, parent, info):
-        super().__init__()
+        super().__init__(None, Qt.WindowStaysOnTopHint)
         self.parent = parent
         self.info = info
 
@@ -1113,7 +1288,7 @@ class MacroAddDialog(QDialog):
                     self.btnA2.setText(temp[4])
             self.setWindowTitle('매크로 수정')
 
-        self.setWindowIcon(QIcon(self.parent.parent.SetMacroIcon))
+        self.setWindowIcon(QIcon('icons/setmacro.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 30, y + 30)
         self.exec()
@@ -1218,7 +1393,7 @@ class KeyReadDialog(QDialog):
     """키 읽어들이기 창 클래스"""
 
     def __init__(self, parent, i):
-        super().__init__()
+        super().__init__(None, Qt.WindowStaysOnTopHint)
         self.setWindowFlag(Qt.WindowCloseButtonHint, False)  # 닫기 버튼 비활성화
         self.parent = parent
         self.i = i
@@ -1239,7 +1414,7 @@ class KeyReadDialog(QDialog):
         self.keyThread.start()
         self.keyThread.keyReadSignal.connect(self.keyRead)
 
-        self.setWindowIcon(QIcon(self.parent.parent.parent.SetMacroIcon))
+        self.setWindowIcon(QIcon('icons/setmacro.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 80, y + 50)
         self.exec()
@@ -1282,4 +1457,652 @@ class KeyRead(QThread):
         key = keyboard.read_key()
         self.keyReadSignal.emit(key)
         self.exit()
+
+
+class AttributeOfTextItem:
+    def __init__(self):
+        self.name = str
+        self.attributes = {
+            'conversation': {
+                'activate': False,
+                'font': 'none',
+                'family': 'none',
+                'size': 'none',
+                'leading': 'none',
+                'tracking': 'none',
+                'horizontalScale': 'none',
+                'verticalScale': 'none',
+                'fauxBold': 'none',
+                'fauxItalic': 'none',
+            },
+            'think': {
+                'activate': False,
+                'font': 'none',
+                'family': 'none',
+                'size': 'none',
+                'leading': 'none',
+                'tracking': 'none',
+                'horizontalScale': 'none',
+                'verticalScale': 'none',
+                'fauxBold': 'none',
+                'fauxItalic': 'none',
+            },
+            'narration': {
+                'activate': False,
+                'font': 'none',
+                'family': 'none',
+                'size': 'none',
+                'leading': 'none',
+                'tracking': 'none',
+                'horizontalScale': 'none',
+                'verticalScale': 'none',
+                'fauxBold': 'none',
+                'fauxItalic': 'none',
+            },
+            'emphasis': {
+                'activate': False,
+                'font': 'none',
+                'family': 'none',
+                'size': 'none',
+                'leading': 'none',
+                'tracking': 'none',
+                'horizontalScale': 'none',
+                'verticalScale': 'none',
+                'fauxBold': 'none',
+                'fauxItalic': 'none',
+            },
+            'effect': {
+                'activate': False,
+                'font': 'none',
+                'family': 'none',
+                'size': 'none',
+                'leading': 'none',
+                'tracking': 'none',
+                'horizontalScale': 'none',
+                'verticalScale': 'none',
+                'fauxBold': 'none',
+                'fauxItalic': 'none',
+            },
+            'background': {
+                'activate': False,
+                'font': 'none',
+                'family': 'none',
+                'size': 'none',
+                'leading': 'none',
+                'tracking': 'none',
+                'horizontalScale': 'none',
+                'verticalScale': 'none',
+                'fauxBold': 'none',
+                'fauxItalic': 'none',
+            }
+        }
+
+
+class TextItemStyleDialog(QDialog):
+    """매크로 설정 창 클래스"""
+
+    def __init__(self, parent):
+        super().__init__(None, Qt.WindowStaysOnTopHint)
+        self.parent = parent
+        self.selectedItem = -1
+        self.font_list = []
+
+        self.lbl_currentTIS = QLabel('현재 지정된 설정:')
+        self.comboBoxForTIS = QComboBox(self)
+        
+        self.updateComBoxForTIS()
+        self.comboBoxForTIS.activated[str].connect(self.setCurrentTextItemStyle)
+
+        self.btn1 = QPushButton('추가(&A)')
+        self.btn1.clicked.connect(self.addTIS)
+        self.btn1.setEnabled(True)
+        self.btn2 = QPushButton('수정(&E)')
+        self.btn2.clicked.connect(self.modifyTIS)
+        self.btn2.setDisabled(True)
+        self.btn3 = QPushButton('복사(&C)')
+        self.btn3.clicked.connect(self.copyTIS)
+        self.btn3.setDisabled(True)
+        self.btn4 = QPushButton('삭제(&D)')
+        self.btn4.clicked.connect(self.deleteTIS)
+        self.btn4.setDisabled(True)
+
+        self.btn5 = QPushButton('OK')
+        self.btn5.clicked.connect(self.close)
+
+        self.listwidget = QListWidget()
+        self.listwidget.clicked.connect(self.clickedList)
+        self.listwidget.doubleClicked.connect(self.modifyTIS)
+        self.listUp()
+
+        layer1 = QVBoxLayout()
+        layer1.addWidget(self.btn1)
+        layer1.addWidget(self.btn2)
+        layer1.addWidget(self.btn3)
+        layer1.addWidget(self.btn4)
+        layer1.addStretch(3)
+        layer1.addWidget(self.btn5)
+
+        layer2 = QHBoxLayout()
+        layer2.addWidget(self.lbl_currentTIS)
+        layer2.addWidget(self.comboBoxForTIS)
+
+        grid = QGridLayout()
+        grid.addLayout(layer2, 0, 0)
+        grid.addWidget(self.listwidget, 1, 0)
+        grid.addLayout(layer1, 1, 1)
+
+        self.setLayout(grid)
+
+        self.setWindowTitle('포토샵 전용 문자 설정')
+        self.setWindowIcon(QIcon("icons/setpsmode.png"))
+        x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
+        self.move(x + 30, y + 100)
+        self.exec()
+
+    def updateComBoxForTIS(self):
+        currentTIS = self.parent.currentTextItemStyle
+        self.comboBoxForTIS.clear()
+        for i in self.parent.textItemStyleList:
+            self.comboBoxForTIS.addItem(i.name)
+        self.comboBoxForTIS.addItem('지정 안 함')
+        self.comboBoxForTIS.setCurrentText('지정 안 함')
+        self.parent.currentTextItemStyle = None
+
+        if currentTIS != None:
+            for i in self.parent.textItemStyleList:  # 설정 삭제 시 체크
+                if i.name == currentTIS.name:
+                    self.comboBoxForTIS.setCurrentText(i.name)
+                    self.parent.currentTextItemStyle = i
+                    break
+
+    def setCurrentTextItemStyle(self, name):
+        if name == '지정 안 함':
+            self.parent.currentTextItemStyle = None
+        else:
+            for i in self.parent.textItemStyleList:
+                if i.name == name:
+                    self.parent.currentTextItemStyle = i
+                    break
+
+    def listUp(self):
+        """매크로 리스트 불러들이는 함수"""
+        self.listwidget.clear()
+        for i in range(len(self.parent.textItemStyleList)):
+            self.listwidget.insertItem(i, self.parent.textItemStyleList[i].name)
+
+    def addTIS(self):
+        """textItem 스타일 설정 추가 창 생성하는 함수"""
+        if len(self.font_list) == 0:
+            self.load_dialog = LoadingDialog(self, '폰트 목록을 불러오는 중입니다...', 'icons/setpsmode.png')
+        dialog = SetAttributeDialog(self, 'none', self.font_list)
+        self.btn2.setDisabled(True)
+        self.btn3.setDisabled(True)
+        self.btn4.setDisabled(True)
+
+    def modifyTIS(self):
+        """매크로 수정 창 생성하는 함수"""
+        if len(self.font_list) == 0:
+            self.load_dialog = LoadingDialog(self, '폰트 목록을 불러오는 중입니다...', 'icons/setpsmode.png')
+        dialog = SetAttributeDialog(self, self.selectedItem, self.font_list)
+        self.listwidget.setCurrentItem(self.listwidget.item(self.selectedItem))
+        self.clickedList()
+
+    def copyTIS(self):
+        temp = self.parent.textItemStyleList
+        num = self.selectedItem
+        copy = AttributeOfTextItem()
+        copy.name = temp[num].name + ' - 복사'
+        copy.attributes['conversation'] = temp[num].attributes['conversation'].copy()
+        copy.attributes['think'] = temp[num].attributes['think'].copy()
+        copy.attributes['narration'] = temp[num].attributes['narration'].copy()
+        copy.attributes['emphasis'] = temp[num].attributes['emphasis'].copy()
+        copy.attributes['effect'] = temp[num].attributes['effect'].copy()
+        copy.attributes['background'] = temp[num].attributes['background'].copy()
+        temp = temp[0:num + 1] + [copy] + temp[num + 1:]
+        self.parent.textItemStyleList = temp
+        self.listUp()
+        self.updateComBoxForTIS()
+        self.listwidget.setCurrentItem(self.listwidget.item(self.selectedItem))
+        self.clickedList()
+
+    def deleteTIS(self):
+        """매크로 삭제하는 함수"""
+        del self.parent.textItemStyleList[self.selectedItem]
+        self.selectedItem = -1
+        self.listUp()
+        self.updateComBoxForTIS()
+        self.btn2.setDisabled(True)
+        self.btn3.setDisabled(True)
+        self.btn4.setDisabled(True)
+
+    def clickedList(self):
+        """매크로 항목 클릭 시 해당 매크로 선택 및 상세 내용 표시"""
+        self.selectedItem = self.listwidget.currentRow()
+        self.btn2.setEnabled(True)
+        self.btn3.setEnabled(True)
+        self.btn4.setEnabled(True)
+
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Delete:
+            if self.selectedItem != -1:
+                self.deleteTIS()
+
+
+class SetAttributeDialog(QDialog):
+
+    def __init__(self, parent, selectedIdx, font_list):
+        super().__init__(None, Qt.WindowStaysOnTopHint)
+        self.parent = parent
+        self.selectedIdx = selectedIdx
+        self.font_list = font_list
+
+        lbl_name = QLabel('이름:')
+        self.lineEdit = QLineEdit()
+        self.lineEdit.setMaxLength(40)
+
+        if self.selectedIdx != 'none':
+            self.selectedTIS = self.parent.parent.textItemStyleList[self.selectedIdx]
+            self.tempAtr = self.selectedTIS
+            self.lineEdit.setText(self.tempAtr.name)
+        else:
+            self.selectedTIS = 'none'
+            self.tempAtr = AttributeOfTextItem()
+            self.lineEdit.setText('기본 설정')
+
+        btn = QPushButton('저장')
+        btn.clicked.connect(self.saveAtr)
+
+        layer1 = QHBoxLayout()
+        layer1.addWidget(lbl_name)
+        layer1.addWidget(self.lineEdit)
+        layer1.setContentsMargins(0, 0, 0, 10)
+        layer2 = QHBoxLayout()
+        layer2.addWidget(btn)
+        layer2.setAlignment(Qt.AlignRight)
+
+        conTab = QWidget()
+        conTab.setLayout(SetAttributeGrid(self, 'conversation'))
+        thkTab = QWidget()
+        thkTab.setLayout(SetAttributeGrid(self, 'think'))
+        empTab = QWidget()
+        empTab.setLayout(SetAttributeGrid(self, 'emphasis'))
+        effTab = QWidget()
+        effTab.setLayout(SetAttributeGrid(self, 'effect'))
+        narTab = QWidget()
+        narTab.setLayout(SetAttributeGrid(self, 'narration'))
+        bgTab = QWidget()
+        bgTab.setLayout(SetAttributeGrid(self, 'background'))
+
+        tabs = QTabWidget()
+        tabs.addTab(conTab, '대화')
+        tabs.addTab(thkTab, '생각')
+        tabs.addTab(narTab, '독백')
+        tabs.addTab(empTab, '강조')
+        tabs.addTab(effTab, '효과')
+        tabs.addTab(bgTab, '배경')
+
+        vbox = QVBoxLayout()
+        vbox.addLayout(layer1)
+        vbox.addWidget(tabs)
+        vbox.addLayout(layer2)
+
+        self.setLayout(vbox)
+        self.setWindowIcon(QIcon('icons/setpsmode.png'))
+        x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
+        self.move(x - 50, y + 100)
+        if self.selectedTIS == 'none':
+            self.setWindowTitle('대사별 문자 설정 추가')
+        else:
+            self.setWindowTitle('대사별 문자 설정 수정')
+        self.exec()
+
+    def saveAtr(self):
+        style_list = self.parent.parent.textItemStyleList
+        self.tempAtr.name = self.lineEdit.text()
+
+        if self.selectedTIS != 'none':
+            style_list[self.selectedIdx] = self.tempAtr
+            # print(self.tempAtr.name + '\n' + str(self.tempAtr.attributes))
+        else:
+            style_list.append(self.tempAtr)
+            # print(self.tempAtr.name + '\n' + str(self.tempAtr.attributes))
+        self.parent.listUp()
+        self.parent.updateComBoxForTIS()
+        self.close()
+
+
+class SetAttributeGrid(QGridLayout):
+    def __init__(self, parent, attribute):
+        QGridLayout.__init__(self)
+        self.parent = parent
+        self.attribute = attribute
+
+        self.chk_activate = QCheckBox('설정 활성화')
+        
+        self.chk_font = QCheckBox('글꼴:')
+        self.fontComBox = QFontComboBox()
+        self.hbox_font = QHBoxLayout()
+        self.hbox_font.addWidget(self.chk_font)
+        self.hbox_font.addWidget(self.fontComBox)
+        self.hbox_font.setContentsMargins(0, 15, 0, 3)
+        self.chk_font.setDisabled(True)
+        self.fontComBox.setDisabled(True)
+
+        self.chk_size = QCheckBox('크기:')
+        self.spbx_size = QSpinBox()
+        self.spbx_size.setSuffix(' pt')
+        self.spbx_size.setRange(1, 100)
+        self.spbx_size.setValue(20)
+        self.hbox_size = QHBoxLayout()
+        self.hbox_size.addWidget(self.chk_size)
+        self.hbox_size.addWidget(self.spbx_size)
+        self.hbox_size.setContentsMargins(0, 0, 5, 3)
+        self.chk_size.setDisabled(True)
+        self.spbx_size.setDisabled(True)
+
+        self.chk_leading = QCheckBox('행간:')
+        self.spbx_leading = QSpinBox()
+        self.spbx_leading.setSuffix(' pt')
+        self.spbx_leading.setRange(1, 150)
+        self.spbx_leading.setValue(25)
+        self.hbox_leading = QHBoxLayout()
+        self.hbox_leading.addWidget(self.chk_leading)
+        self.hbox_leading.addWidget(self.spbx_leading)
+        self.hbox_leading.setContentsMargins(0, 0, 5, 3)
+        self.chk_leading.setDisabled(True)
+        self.spbx_leading.setDisabled(True)
+
+        self.chk_tracking = QCheckBox('자간:')
+        self.spbx_tracking = QSpinBox()
+        self.spbx_tracking.setRange(-100, 200)
+        self.spbx_tracking.setValue(0)
+        self.hbox_tracking = QHBoxLayout()
+        self.hbox_tracking.addWidget(self.chk_tracking)
+        self.hbox_tracking.addWidget(self.spbx_tracking)
+        self.hbox_tracking.setContentsMargins(0, 0, 5, 0)
+        self.chk_tracking.setDisabled(True)
+        self.spbx_tracking.setDisabled(True)
+
+        self.chk_hscale = QCheckBox('가로 비율:')
+        self.spbx_hscale = QSpinBox()
+        self.spbx_hscale.setSuffix('%')
+        self.spbx_hscale.setRange(0, 200)
+        self.spbx_hscale.setValue(100)
+        self.hbox_hscale = QHBoxLayout()
+        self.hbox_hscale.addWidget(self.chk_hscale)
+        self.hbox_hscale.addWidget(self.spbx_hscale)
+        # self.hbox_hscale.setContentsMargins(0, 2, 10, 2)
+        self.chk_hscale.setDisabled(True)
+        self.spbx_hscale.setDisabled(True)
+
+        self.chk_vscale = QCheckBox('세로 비율:')
+        self.spbx_vscale = QSpinBox()
+        self.spbx_vscale.setSuffix('%')
+        self.spbx_vscale.setRange(0, 200)
+        self.spbx_vscale.setValue(100)
+        self.hbox_vscale = QHBoxLayout()
+        self.hbox_vscale.addWidget(self.chk_vscale)
+        self.hbox_vscale.addWidget(self.spbx_vscale)
+        # self.hbox_vscale.setContentsMargins(10, 2, 10, 2)
+        self.chk_vscale.setDisabled(True)
+        self.spbx_vscale.setDisabled(True)
+
+        self.chk_style = QCheckBox('스타일:')
+        self.btn_bold = QPushButton(QIcon('icons/text.png'), '', )
+        self.btn_bold.setToolTip('볼드체')
+        self.btn_bold.setCheckable(True)
+        self.btn_bold.setAutoDefault(False)
+        self.btn_italic = QPushButton(QIcon('icons/text.png'), '', )
+        self.btn_italic.setToolTip('이탤릭체')
+        self.btn_italic.setCheckable(True)
+        self.btn_italic.setAutoDefault(False)
+        self.btn_hbox = QHBoxLayout()
+        self.btn_hbox.addWidget(self.chk_style)
+        self.btn_hbox.addWidget(self.btn_bold)
+        self.btn_hbox.addWidget(self.btn_italic)
+        # self.btn_hbox.setContentsMargins(10, 2, 0, 2)
+        self.chk_style.setDisabled(True)
+        self.btn_bold.setDisabled(True)
+        self.btn_italic.setDisabled(True)
+
+        if self.parent.selectedTIS != 'none':
+            selTIS = self.parent.selectedTIS
+            activate = selTIS.attributes[self.attribute]['activate']
+            family = selTIS.attributes[self.attribute]['family']
+            if family != 'none':
+                self.chk_font.setChecked(True)
+                self.fontComBox.setCurrentFont(QFont('family'))
+            size = selTIS.attributes[self.attribute]['size']
+            if size != 'none':
+                self.chk_size.setChecked(True)
+                self.spbx_size.setValue(size)
+            leading = selTIS.attributes[self.attribute]['leading']
+            if leading != 'none':
+                self.chk_leading.setChecked(True)
+                self.spbx_leading.setValue(leading)
+            tracking = selTIS.attributes[self.attribute]['tracking']
+            if tracking != 'none':
+                self.chk_tracking.setChecked(True)
+                self.spbx_tracking.setValue(tracking)
+            hscale = selTIS.attributes[self.attribute]['horizontalScale']
+            if hscale != 'none':
+                self.chk_hscale.setChecked(True)
+                self.spbx_hscale.setValue(hscale)
+            vscale = selTIS.attributes[self.attribute]['verticalScale']
+            if vscale != 'none':
+                self.chk_vscale.setChecked(True)
+                self.spbx_vscale.setValue(vscale)
+            bold = selTIS.attributes[self.attribute]['fauxBold']
+            italic = selTIS.attributes[self.attribute]['fauxItalic']
+            if bold != 'none' and italic != 'none':
+                self.chk_style.setChecked(True)
+                self.btn_bold.setChecked(bold)
+                self.btn_italic.setChecked(italic)
+            if activate:
+                self.chk_activate.setChecked(True)
+                self.actAll()
+
+        self.chk_activate.stateChanged.connect(self.actAll)
+        self.chk_font.stateChanged.connect(self.actFont)
+        self.fontComBox.currentFontChanged.connect(self.changeFont)
+        self.chk_size.stateChanged.connect(self.actSize)
+        self.spbx_size.valueChanged.connect(self.changeSize)
+        self.chk_leading.stateChanged.connect(self.actLeading)
+        self.spbx_leading.valueChanged.connect(self.changeLeading)
+        self.chk_tracking.stateChanged.connect(self.actTracking)
+        self.spbx_tracking.valueChanged.connect(self.changeTracking)
+        self.chk_hscale.stateChanged.connect(self.actHscale)
+        self.spbx_hscale.valueChanged.connect(self.changeHscale)
+        self.chk_vscale.stateChanged.connect(self.actVscale)
+        self.spbx_vscale.valueChanged.connect(self.changeVscale)
+        self.chk_style.stateChanged.connect(self.actStyle)
+        self.btn_bold.clicked.connect(self.changeBold)
+        self.btn_italic.clicked.connect(self.changeItalic)
+
+        self.addWidget(self.chk_activate, 0, 0)
+        self.addLayout(self.hbox_font, 1, 0, 1, 0, Qt.AlignLeft)
+        self.addLayout(self.hbox_size, 2, 0)
+        self.addLayout(self.hbox_leading, 2, 1)
+        self.addLayout(self.hbox_tracking, 3, 1)
+        self.addLayout(self.hbox_hscale, 2, 2)
+        self.addLayout(self.hbox_vscale, 3, 2)
+        self.addLayout(self.btn_hbox, 3, 0, Qt.AlignLeft)
+
+    def actAll(self):
+        if self.chk_activate.isChecked():
+            self.parent.tempAtr.attributes[self.attribute]['activate'] = True
+            self.chk_font.setEnabled(True)
+            self.chk_size.setEnabled(True)
+            self.chk_leading.setEnabled(True)
+            self.chk_tracking.setEnabled(True)
+            self.chk_hscale.setEnabled(True)
+            self.chk_vscale.setEnabled(True)
+            self.chk_style.setEnabled(True)
+            self.actFont()
+            self.actSize()
+            self.actLeading()
+            self.actTracking()
+            self.actHscale()
+            self.actVscale()
+            self.actStyle()
+        else:
+            self.parent.tempAtr.attributes[self.attribute]['activate'] = False
+            self.chk_font.setDisabled(True)
+            self.chk_size.setDisabled(True)
+            self.chk_leading.setDisabled(True)
+            self.chk_tracking.setDisabled(True)
+            self.chk_hscale.setDisabled(True)
+            self.chk_vscale.setDisabled(True)
+            self.chk_style.setDisabled(True)
+            self.fontComBox.setDisabled(True)
+            self.spbx_size.setDisabled(True)
+            self.spbx_leading.setDisabled(True)
+            self.spbx_tracking.setDisabled(True)
+            self.spbx_hscale.setDisabled(True)
+            self.spbx_vscale.setDisabled(True)
+            self.btn_bold.setDisabled(True)
+            self.btn_italic.setDisabled(True)
+
+    def actFont(self):
+        if self.chk_font.isChecked():
+            self.fontComBox.setEnabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['family'] = self.fontComBox.font().family()
+        else:
+            self.fontComBox.setDisabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['family'] = 'none'
+
+    def actSize(self):
+        if self.chk_size.isChecked():
+            self.spbx_size.setEnabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['size'] = self.spbx_size.value()
+        else:
+            self.spbx_size.setDisabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['size'] = 'none'
+
+    def actLeading(self):
+        if self.chk_leading.isChecked():
+            self.spbx_leading.setEnabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['leading'] = self.spbx_leading.value()
+        else:
+            self.spbx_leading.setDisabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['leading'] = 'none'
+
+    def actTracking(self):
+        if self.chk_tracking.isChecked():
+            self.spbx_tracking.setEnabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['tracking'] = self.spbx_tracking.value()
+        else:
+            self.spbx_tracking.setDisabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['tracking'] = 'none'
+
+    def actHscale(self):
+        if self.chk_hscale.isChecked():
+            self.spbx_hscale.setEnabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['horizontalScale'] = self.spbx_hscale.value()
+        else:
+            self.spbx_hscale.setDisabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['horizontalScale'] = 'none'
+
+    def actVscale(self):
+        if self.chk_vscale.isChecked():
+            self.spbx_vscale.setEnabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['verticalScale'] = self.spbx_vscale.value()
+        else:
+            self.spbx_vscale.setDisabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['verticalScale'] = 'none'
+
+    def actStyle(self):
+        if self.chk_style.isChecked():
+            self.btn_bold.setEnabled(True)
+            self.btn_italic.setEnabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['fauxBold'] = self.btn_bold.isChecked()
+            self.parent.tempAtr.attributes[self.attribute]['fauxItalic'] = self.btn_italic.isChecked()
+        else:
+            self.spbx_vscale.setDisabled(True)
+            self.btn_bold.setDisabled(True)
+            self.btn_italic.setDisabled(True)
+            self.parent.tempAtr.attributes[self.attribute]['fauxBold'] = 'none'
+            self.parent.tempAtr.attributes[self.attribute]['fauxItalic'] = 'none'
+
+    def getPostscriptName(self, family) -> str:
+        for f in self.parent.font_list:
+            try:
+                if f.family == family:
+                    return f.postScriptName
+            except:
+                pass
+        return 'none'
+
+    def changeFont(self, family):
+        self.parent.tempAtr.attributes[self.attribute]['family'] = family
+        self.parent.tempAtr.attributes[self.attribute]['font'] = self.getPostscriptName(family)
+
+    def changeSize(self, num):
+        self.parent.tempAtr.attributes[self.attribute]['size'] = num
+
+    def changeLeading(self, num):
+        self.parent.tempAtr.attributes[self.attribute]['leading'] = num
+
+    def changeTracking(self, num):
+        self.parent.tempAtr.attributes[self.attribute]['tracking'] = num
+
+    def changeHscale(self, num):
+        self.parent.tempAtr.attributes[self.attribute]['horizontalScale'] = num
+
+    def changeVscale(self, num):
+        self.parent.tempAtr.attributes[self.attribute]['verticalScale'] = num
+
+    def changeBold(self):
+        self.parent.tempAtr.attributes[self.attribute]['fauxBold'] = self.btn_bold.isChecked()
+
+    def changeItalic(self):
+        self.parent.tempAtr.attributes[self.attribute]['fauxItalic'] = self.btn_italic.isChecked()
+
+
+class LoadingDialog(QDialog):
+
+    def __init__(self, parent, txt, icon):
+        super().__init__(None, Qt.WindowStaysOnTopHint)
+        self.setWindowFlag(Qt.WindowCloseButtonHint, False)  # 닫기 버튼 비활성화
+        self.parent = parent
+        self.txt = txt
+        self.icon = icon
+
+        load_thread = LoadFonts(self)
+        load_thread.start()
+        load_thread.loadSignal.connect(self.saveFontList)
+
+        lbl = QLabel(txt)
+        pbar = QProgressBar()
+        pbar.setMaximum(0)  # 맥시멈 미니멈 둘 다 0으로 해주면 무한 로딩 연출 가능
+        pbar.setMinimum(0)
+        vbox = QVBoxLayout()
+        vbox.addWidget(lbl)
+        vbox.addWidget(pbar)
+
+        self.setLayout(vbox)
+        self.setWindowTitle('로딩 중...')
+        self.setWindowIcon(QIcon(self.icon))
+        x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
+        self.move(x + 50, y + 130)
+        self.exec()
+
+    @pyqtSlot(list)
+    def saveFontList(self, f_list):
+        self.parent.font_list = f_list
+        self.close()
+
+
+class LoadFonts(QThread):
+    loadSignal = pyqtSignal(list)
+
+    def run(self):
+        self.exec()
+
+    def exec(self):
+        font_list = ps.Application().fonts.getFontList()
+        self.loadSignal.emit(font_list)
+        self.quit()
+
+
 
