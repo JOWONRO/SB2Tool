@@ -20,16 +20,19 @@ class LoadAndSaveFonts(QThread):
         self.exec()
 
     def exec(self):
-        self.font_list = ps.Application().fonts.getFontList()
-        self.atr = self.parent.tempAtr
-        self.savePostscriptName('conversation')
-        self.savePostscriptName('emphasis')
-        self.savePostscriptName('narration')
-        self.savePostscriptName('think')
-        self.savePostscriptName('background')
-        self.savePostscriptName('effect')
+        try:
+            self.font_list = ps.Application().fonts.getFontList()
+            self.atr = self.parent.tempAtr
+            self.savePostscriptName('conversation')
+            self.savePostscriptName('emphasis')
+            self.savePostscriptName('narration')
+            self.savePostscriptName('think')
+            self.savePostscriptName('background')
+            self.savePostscriptName('effect')
 
-        self.loadSignal.emit(True)
+            self.loadSignal.emit(True)
+        except:
+            self.loadSignal.emit(False)
         self.quit()
 
     def savePostscriptName(self, attribute):

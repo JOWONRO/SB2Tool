@@ -1,4 +1,3 @@
-import photoshop.api as ps
 from PyQt5.QtWidgets import (
     QWidget,
     QDialog,

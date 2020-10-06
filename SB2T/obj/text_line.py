@@ -484,9 +484,10 @@ class TextLine(QPushButton):
         if self.parent.psAutoStartAction.isEnabled():
             if self.attribute != 'none' and self.parent.currentTextItemStyle != None:
                 hotkey('ctrl', 'enter')
-                while True:
+                app = ps.Application()
+                while True:  # hotkey가 스레드 형식?인 것 같아서 activelayer 오류가 뜸. 그래서 불가피하게 반복문을...
                     try:
-                        item = ps.Application().ActiveDocument.ActiveLayer.textItem
+                        item = app.ActiveDocument.ActiveLayer.textItem
                         self.setStyleOfTextItem(item)
                         break
                     except:
@@ -504,9 +505,10 @@ class TextLine(QPushButton):
 
     def pasteTextPSMode(self):
         """PS 모드 시 적용되는 붙여넣기 함수"""
+        app = ps.Application()
         while True:
             try:
-                item = ps.Application().ActiveDocument.ActiveLayer.textItem
+                item = app.ActiveDocument.ActiveLayer.textItem
                 item.contents = paste()  # 텍스트 레이어 내용물 변경
                 if self.attribute != 'none' and self.parent.currentTextItemStyle != None:
                     self.setStyleOfTextItem(item)

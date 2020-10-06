@@ -2,7 +2,8 @@ from PyQt5.QtWidgets import (
     QDialog,
     QLabel,
     QVBoxLayout,
-    QProgressBar
+    QProgressBar,
+    QMessageBox
 )
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, pyqtSlot
@@ -43,4 +44,7 @@ class LoadingDialog(QDialog):
     def finishLoading(self, check):
         """로딩을 종료하는 함수"""
         if check:
+            self.close()
+        else:
+            QMessageBox.warning(self, "오류", "글꼴을 저장하지 못했습니다.")
             self.close()
