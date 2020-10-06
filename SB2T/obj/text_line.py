@@ -13,6 +13,7 @@ from PyQt5.QtCore import Qt, QSize
 from pyautogui import hotkey, position
 from clipboard import copy, paste
 import time
+from re import match
 
 from SB2T.dialog import TextEditDialog
 
@@ -24,14 +25,15 @@ class TextLine(QPushButton):
         super().__init__()
         self.num = num  # 텍스트 라인 인덱스
         self.parent = parent
-        self.mode = mode    # 주석인지 기본 버튼인지 구분
+        self.mode = mode  # 0: 주석, 1: 버튼
         self.txt = txt
         self.pasted = 0  # 붙여넣기 흔적용 플래그 (0:X, 1:최근, 2:흔적)
         self.connected_mode = connected_mode  # 0: 머리, 1: 중간, 2: 꼬리
         self.head = head
-        self.act_connection = 0
         if self.connected_mode != -1:
             self.act_connection = 1
+        else:
+            self.act_connection = 0
         self.attribute = 'none' # 대화 = conversation, 
                                 # 생각 = think,
                                 # 독백 = narration,
@@ -79,8 +81,6 @@ class TextLine(QPushButton):
                     elif temp == '배경':
                         self.attribute = 'background'
                         self.setIcon(QIcon('icons/background.png'))
-                    if self.act_connection and self.connected_mode != 2:
-                        self.setIcon(QIcon('icons/none.png'))
                 except:
                     self.setText(self.txt)
             else:
@@ -215,13 +215,13 @@ class TextLine(QPushButton):
             self.parent.btn[self.num - way].setConnectStyle(way, status)
 
     def setContextMenu(self):
-        """해당 텍스트 라인 우클릭 시 나타나는 메뉴 이벤트"""
+        """콘텍스트 메뉴 초기 설정 함수"""
         self.textEditAction = QAction('텍스트 수정(&E)')
         self.textEditAction.triggered.connect(self.setTextEditDialog)
         self.chgToCmtAction = QAction('주석 적용(&C)')
-        self.chgToCmtAction.triggered.connect(lambda: self.changeMode(0))
+        self.chgToCmtAction.triggered.connect(self.changeMode)
         self.chgToBtnAction = QAction('주석 해제(&C)')
-        self.chgToBtnAction.triggered.connect(lambda: self.changeMode(1))
+        self.chgToBtnAction.triggered.connect(self.changeMode)
         self.disconnectAction = QAction('연결 비활성화(&A)')
         self.disconnectAction.triggered.connect(lambda: self.setActiveConnection(False))
         self.connectAction = QAction('연결 활성화(&A)')
@@ -258,6 +258,7 @@ class TextLine(QPushButton):
         self.tag_menu.addAction(self.eff)
 
     def showContextMenu(self, pos):
+        """콘텍스트 메뉴 보여주는 함수"""
         menu = QMenu(self)
         menu.addAction(self.textEditAction)
         menu.addSeparator()
@@ -302,16 +303,16 @@ class TextLine(QPushButton):
         menu.move(pos)
         menu.show()
 
-    def changeMode(self, mode):
-        self.mode = mode
+    def changeMode(self):
+        """모드를 바꾸는 함수(주석, 버튼)"""
         if self.mode:
-            self.txt = self.txt[1:]
+            self.mode = 0
         else:
-            self.txt = '/' + self.txt
+            self.mode = 1
         self.setLine()
-        self.parent.recordChange()
 
     def changeAttribute(self, attribute, action):
+        """대사 태그를 바꾸는 함수"""
         if self.attribute != 'none':
             index = self.txt.index(']')
             self.txt = self.txt[index + 1:]
@@ -480,18 +481,23 @@ class TextLine(QPushButton):
         hotkey('ctrl', 'v')
         self.setUncheckedAfterPaste()
         self.parent.pasteEdit.setDisabled(True)
-        time.sleep(.1)  # 이렇게 안 해주면 PS 모드 동시 사용 시 다음 라인이 복붙되는 현상 발생
-
         if self.parent.psAutoStartAction.isEnabled():
             if self.attribute != 'none' and self.parent.currentTextItemStyle != None:
                 hotkey('ctrl', 'enter')
-                self.setStyleOfTextItem(self.attribute)
+                while True:
+                    try:
+                        item = ps.Application().ActiveDocument.ActiveLayer.textItem
+                        self.setStyleOfTextItem(item)
+                        break
+                    except:
+                        pass
             else:
                 if self.parent.pasteCtrlEnter:  # 포토샵 한정 자동 레이어 닫기 여부
                     hotkey('ctrl', 'enter')
 
         self.setTraceTextLine()
         if self.parent.psAutoStartAction.isChecked():  # PS 모드 동시 사용 시 다음 라인 자동 복사
+            time.sleep(.05)  # 이렇게 안 해주면 PS 모드 동시 사용 시 다음 라인이 복붙되는 현상 발생
             self.parent.nextLineCopy()
         # self.parent.resetRecordAction.setEnabled(True)
         self.parent.resetRecord.setEnabled(True)
@@ -503,7 +509,7 @@ class TextLine(QPushButton):
                 item = ps.Application().ActiveDocument.ActiveLayer.textItem
                 item.contents = paste()  # 텍스트 레이어 내용물 변경
                 if self.attribute != 'none' and self.parent.currentTextItemStyle != None:
-                    self.setStyleOfTextItem(self.attribute, item)
+                    self.setStyleOfTextItem(item)
                 self.parent.psAutoThreadStart()
                 break
             except:
@@ -514,26 +520,30 @@ class TextLine(QPushButton):
         # self.parent.resetRecordAction.setEnabled(True)
         self.parent.resetRecord.setEnabled(True)
 
-    def setStyleOfTextItem(self, attribute, item):
-        # 임시 #
-        currentTIS = self.parent.currentTextItemStyle
-        if currentTIS[attribute]['activate']:
-            if currentTIS[attribute]['font'] != 'none':
-                item.font = currentTIS[attribute]['font']
-            if currentTIS[attribute]['size'] != 'none':
-                item.size = currentTIS[attribute]['size']
-            if currentTIS[attribute]['leading'] != 'none':
-                item.leading = currentTIS[attribute]['leading']
-            if currentTIS[attribute]['tracking'] != 'none':
-                item.tracking = currentTIS[attribute]['tracking']
-            if currentTIS[attribute]['fauxBold'] != 'none':
-                item.fauxBold = currentTIS[attribute]['fauxBold']
-            if currentTIS[attribute]['fauxItalic'] != 'none':
-                item.fauxItalic = currentTIS[attribute]['fauxItalic']
-            if currentTIS[attribute]['horizontalScale'] != 'none':
-                item.horizontalScale = currentTIS[attribute]['horizontalScale']
-            if currentTIS[attribute]['verticalScale'] != 'none':
-                item.verticalScale = currentTIS[attribute]['verticalScale']
+    def setStyleOfTextItem(self, item):
+        """현재 지정된 포토샵 문자 설정을 반영하는 함수"""
+        atr = self.parent.currentTextItemStyle.attributes
+        if self.act_connection:
+            attribute = self.parent.btn[self.parent.lineCnt[0]].attribute
+        else:
+            attribute = self.attribute
+        if atr[attribute]['activate']:
+            if atr[attribute]['font'] != 'none':
+                item.font = atr[attribute]['font']
+            if atr[attribute]['size'] != 'none':
+                item.size = atr[attribute]['size']
+            if atr[attribute]['leading'] != 'none':
+                item.leading = atr[attribute]['leading']
+            if atr[attribute]['tracking'] != 'none':
+                item.tracking = atr[attribute]['tracking']
+            if atr[attribute]['fauxBold'] != 'none':
+                item.fauxBold = atr[attribute]['fauxBold']
+            if atr[attribute]['fauxItalic'] != 'none':
+                item.fauxItalic = atr[attribute]['fauxItalic']
+            if atr[attribute]['horizontalScale'] != 'none':
+                item.horizontalScale = atr[attribute]['horizontalScale']
+            if atr[attribute]['verticalScale'] != 'none':
+                item.verticalScale = atr[attribute]['verticalScale']
         # layer.textItem.height = 100
         # layer.textItem.width = 200
         # layer.textItem.position = [10, 10]

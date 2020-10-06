@@ -19,7 +19,7 @@ class TextChangeDialog(QDialog):
         self.index = 0
         self.findlist = []
         self.listlen = 0
-        x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
+        x, y = self.parent.pos().x(), self.parent.pos().y()
         self.move(x + 50, y + 150)
 
         self.textedit1 = QLineEdit()

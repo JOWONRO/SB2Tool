@@ -1,6 +1,8 @@
 
 
 class AttributeOfTextItem:
+    """태그별 문자 설정 정보를 담은 클래스 객체"""
+
     def __init__(self):
         self.name = str
         self.attributes = {

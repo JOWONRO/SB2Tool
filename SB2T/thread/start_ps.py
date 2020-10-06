@@ -35,6 +35,5 @@ class StartPsThread(QThread):
                 self.psTextLayerSignal.emit(False)
                 break
         pythoncom.CoUninitialize()
-        # self.exit()
         self.quit()
 

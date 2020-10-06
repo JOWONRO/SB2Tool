@@ -1,3 +1,4 @@
+import photoshop.api as ps
 from PyQt5.QtWidgets import (
     QWidget,
     QDialog,
@@ -16,15 +17,17 @@ from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtCore import Qt
 
 from SB2T.obj import AttributeOfTextItem
+from .loading import LoadingDialog
 
 
 class SetAttributeDialog(QDialog):
+    """세부 문자 설정 창 클래스"""
 
-    def __init__(self, parent, selectedIdx, font_list):
+    def __init__(self, parent, selectedIdx):
         super().__init__(None, Qt.WindowStaysOnTopHint)
         self.parent = parent
         self.selectedIdx = selectedIdx
-        self.font_list = font_list
+        # self.font_list = font_list
 
         lbl_name = QLabel('이름:')
         self.lineEdit = QLineEdit()
@@ -65,11 +68,11 @@ class SetAttributeDialog(QDialog):
 
         tabs = QTabWidget()
         tabs.addTab(conTab, '대화')
-        tabs.addTab(thkTab, '생각')
-        tabs.addTab(narTab, '독백')
         tabs.addTab(empTab, '강조')
-        tabs.addTab(effTab, '효과')
+        tabs.addTab(narTab, '독백')
+        tabs.addTab(thkTab, '생각')
         tabs.addTab(bgTab, '배경')
+        tabs.addTab(effTab, '효과')
 
         vbox = QVBoxLayout()
         vbox.addLayout(layer1)
@@ -78,7 +81,7 @@ class SetAttributeDialog(QDialog):
 
         self.setLayout(vbox)
         self.setWindowIcon(QIcon('icons/setpsmode.png'))
-        x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
+        x, y = self.parent.pos().x(), self.parent.pos().y()
         self.move(x - 50, y + 100)
         if self.selectedTIS == 'none':
             self.setWindowTitle('대사별 문자 설정 추가')
@@ -87,21 +90,25 @@ class SetAttributeDialog(QDialog):
         self.exec()
 
     def saveAtr(self):
+        """문자 설정을 저장하는 함수"""
+        load_dialog = LoadingDialog(self, '저장 중입니다...', 'icons/setpsmode.png')
+
         style_list = self.parent.parent.textItemStyleList
         self.tempAtr.name = self.lineEdit.text()
 
         if self.selectedTIS != 'none':
             style_list[self.selectedIdx] = self.tempAtr
-            # print(self.tempAtr.name + '\n' + str(self.tempAtr.attributes))
         else:
             style_list.append(self.tempAtr)
-            # print(self.tempAtr.name + '\n' + str(self.tempAtr.attributes))
         self.parent.listUp()
         self.parent.updateComBoxForTIS()
+        # print('save -> ' + self.parent.parent.textItemStyleList[self.selectedIdx].attributes['conversation']['family'])  # 디버깅
         self.close()
 
 
 class SetAttributeGrid(QGridLayout):
+    """태그별 탭 생성을 위한 그리드 클래스"""
+
     def __init__(self, parent, attribute):
         QGridLayout.__init__(self)
         self.parent = parent
@@ -178,11 +185,11 @@ class SetAttributeGrid(QGridLayout):
         self.spbx_vscale.setDisabled(True)
 
         self.chk_style = QCheckBox('스타일:')
-        self.btn_bold = QPushButton(QIcon('icons/text.png'), '', )
+        self.btn_bold = QPushButton(QIcon('icons/bold.png'), '', )
         self.btn_bold.setToolTip('볼드체')
         self.btn_bold.setCheckable(True)
         self.btn_bold.setAutoDefault(False)
-        self.btn_italic = QPushButton(QIcon('icons/text.png'), '', )
+        self.btn_italic = QPushButton(QIcon('icons/italic.png'), '', )
         self.btn_italic.setToolTip('이탤릭체')
         self.btn_italic.setCheckable(True)
         self.btn_italic.setAutoDefault(False)
@@ -199,9 +206,10 @@ class SetAttributeGrid(QGridLayout):
             selTIS = self.parent.selectedTIS
             activate = selTIS.attributes[self.attribute]['activate']
             family = selTIS.attributes[self.attribute]['family']
+            # print('selTIS.attributes -> ' + family)  #디버깅
             if family != 'none':
                 self.chk_font.setChecked(True)
-                self.fontComBox.setCurrentFont(QFont('family'))
+                self.fontComBox.setCurrentFont(QFont(family))
             size = selTIS.attributes[self.attribute]['size']
             if size != 'none':
                 self.chk_size.setChecked(True)
@@ -259,6 +267,7 @@ class SetAttributeGrid(QGridLayout):
         self.addLayout(self.btn_hbox, 3, 0, Qt.AlignLeft)
 
     def actAll(self):
+        """전체 설정 활성화 여부 함수"""
         if self.chk_activate.isChecked():
             self.parent.tempAtr.attributes[self.attribute]['activate'] = True
             self.chk_font.setEnabled(True)
@@ -294,14 +303,18 @@ class SetAttributeGrid(QGridLayout):
             self.btn_italic.setDisabled(True)
 
     def actFont(self):
+        """폰트 설정 활성화 여부 함수"""
         if self.chk_font.isChecked():
             self.fontComBox.setEnabled(True)
-            self.parent.tempAtr.attributes[self.attribute]['family'] = self.fontComBox.font().family()
+            # print('actFont -> ' + self.fontComBox.currentFont().family())  #디버깅
+            family = self.fontComBox.currentFont().family()
+            self.parent.tempAtr.attributes[self.attribute]['family'] = family
         else:
             self.fontComBox.setDisabled(True)
             self.parent.tempAtr.attributes[self.attribute]['family'] = 'none'
 
     def actSize(self):
+        """크기 설정 활성화 여부 함수"""
         if self.chk_size.isChecked():
             self.spbx_size.setEnabled(True)
             self.parent.tempAtr.attributes[self.attribute]['size'] = self.spbx_size.value()
@@ -310,6 +323,7 @@ class SetAttributeGrid(QGridLayout):
             self.parent.tempAtr.attributes[self.attribute]['size'] = 'none'
 
     def actLeading(self):
+        """행간 설정 활성화 여부 함수"""
         if self.chk_leading.isChecked():
             self.spbx_leading.setEnabled(True)
             self.parent.tempAtr.attributes[self.attribute]['leading'] = self.spbx_leading.value()
@@ -318,6 +332,7 @@ class SetAttributeGrid(QGridLayout):
             self.parent.tempAtr.attributes[self.attribute]['leading'] = 'none'
 
     def actTracking(self):
+        """자간 설정 활성화 여부 함수"""
         if self.chk_tracking.isChecked():
             self.spbx_tracking.setEnabled(True)
             self.parent.tempAtr.attributes[self.attribute]['tracking'] = self.spbx_tracking.value()
@@ -326,6 +341,7 @@ class SetAttributeGrid(QGridLayout):
             self.parent.tempAtr.attributes[self.attribute]['tracking'] = 'none'
 
     def actHscale(self):
+        """가로 비율 설정 활성화 여부 함수"""
         if self.chk_hscale.isChecked():
             self.spbx_hscale.setEnabled(True)
             self.parent.tempAtr.attributes[self.attribute]['horizontalScale'] = self.spbx_hscale.value()
@@ -334,6 +350,7 @@ class SetAttributeGrid(QGridLayout):
             self.parent.tempAtr.attributes[self.attribute]['horizontalScale'] = 'none'
 
     def actVscale(self):
+        """세로 비율 설정 활성화 여부 함수"""
         if self.chk_vscale.isChecked():
             self.spbx_vscale.setEnabled(True)
             self.parent.tempAtr.attributes[self.attribute]['verticalScale'] = self.spbx_vscale.value()
@@ -342,6 +359,7 @@ class SetAttributeGrid(QGridLayout):
             self.parent.tempAtr.attributes[self.attribute]['verticalScale'] = 'none'
 
     def actStyle(self):
+        """스타일 설정 활성화 여부 함수"""
         if self.chk_style.isChecked():
             self.btn_bold.setEnabled(True)
             self.btn_italic.setEnabled(True)
@@ -351,40 +369,38 @@ class SetAttributeGrid(QGridLayout):
             self.spbx_vscale.setDisabled(True)
             self.btn_bold.setDisabled(True)
             self.btn_italic.setDisabled(True)
-            self.parent.tempAtr.attributes[self.attribute]['fauxBold'] = 'none'
-            self.parent.tempAtr.attributes[self.attribute]['fauxItalic'] = 'none'
+            self.parent.tempAtr.attributes[self.attribute]['fauxBold'] = False
+            self.parent.tempAtr.attributes[self.attribute]['fauxItalic'] = False
 
-    def getPostscriptName(self, family) -> str:
-        for f in self.parent.font_list:
-            try:
-                if f.family == family:
-                    return f.postScriptName
-            except:
-                pass
-        return 'none'
-
-    def changeFont(self, family):
-        self.parent.tempAtr.attributes[self.attribute]['family'] = family
-        self.parent.tempAtr.attributes[self.attribute]['font'] = self.getPostscriptName(family)
+    def changeFont(self, font):
+        """폰트 바꾸는 함수"""
+        self.parent.tempAtr.attributes[self.attribute]['family'] = font.family()
 
     def changeSize(self, num):
+        """크기 바꾸는 함수"""
         self.parent.tempAtr.attributes[self.attribute]['size'] = num
 
     def changeLeading(self, num):
+        """행간 바꾸는 함수"""
         self.parent.tempAtr.attributes[self.attribute]['leading'] = num
 
     def changeTracking(self, num):
+        """자간 바꾸는 함수"""
         self.parent.tempAtr.attributes[self.attribute]['tracking'] = num
 
     def changeHscale(self, num):
+        """가로 비율 바꾸는 함수"""
         self.parent.tempAtr.attributes[self.attribute]['horizontalScale'] = num
 
     def changeVscale(self, num):
+        """세로 비율 바꾸는 함수"""
         self.parent.tempAtr.attributes[self.attribute]['verticalScale'] = num
 
     def changeBold(self):
+        """볼드체 바꾸는 함수"""
         self.parent.tempAtr.attributes[self.attribute]['fauxBold'] = self.btn_bold.isChecked()
 
     def changeItalic(self):
+        """이탤릭체 바꾸는 함수"""
         self.parent.tempAtr.attributes[self.attribute]['fauxItalic'] = self.btn_italic.isChecked()
 

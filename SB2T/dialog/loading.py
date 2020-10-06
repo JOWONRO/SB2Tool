@@ -7,10 +7,11 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, pyqtSlot
 
-from SB2T.thread import LoadFonts
+from SB2T.thread import LoadAndSaveFonts
 
 
 class LoadingDialog(QDialog):
+    """세부 문자 설정 창 생성 시 생성되는 로딩 창 클래스"""
 
     def __init__(self, parent, txt, icon):
         super().__init__(None, Qt.WindowStaysOnTopHint)
@@ -19,9 +20,9 @@ class LoadingDialog(QDialog):
         self.txt = txt
         self.icon = icon
 
-        load_thread = LoadFonts(self)
+        load_thread = LoadAndSaveFonts(self.parent)
         load_thread.start()
-        load_thread.loadSignal.connect(self.saveFontList)
+        load_thread.loadSignal.connect(self.finishLoading)
 
         lbl = QLabel(txt)
         pbar = QProgressBar()
@@ -38,7 +39,8 @@ class LoadingDialog(QDialog):
         self.move(x + 50, y + 130)
         self.exec()
 
-    @pyqtSlot(list)
-    def saveFontList(self, f_list):
-        self.parent.font_list = f_list
-        self.close()
+    @pyqtSlot(bool)
+    def finishLoading(self, check):
+        """로딩을 종료하는 함수"""
+        if check:
+            self.close()

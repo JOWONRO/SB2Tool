@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QStatusBar,
     QFontDialog,
-    QScrollArea,
+    QScrollArea
 )
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtCore import Qt, QSettings, pyqtSlot
@@ -46,6 +46,7 @@ class MainApp(QMainWindow):
     def __init__(self):
         super().__init__(None, Qt.WindowStaysOnTopHint)
         self.settings = QSettings("RingNebula", "SB2Tool")
+        self.version = 'Beta3.2'
         self.font = QFont()
         self.toolbar = QToolBar("기본 툴바")
         self.addToolBar(Qt.LeftToolBarArea, self.toolbar)
@@ -70,11 +71,12 @@ class MainApp(QMainWindow):
         self.initUI()
 
     def checkLastSettings(self):
+        """마지막으로 저장된 설정을 불러오는 함수"""
         try:
             self.notFirstStart = self.settings.value("NotFirstStart")
         except:
             self.notFirstStart = False
-        if not self.notFirstStart:
+        if not self.notFirstStart:  # 초기화
             self.advSettingsList = [1, 0, 0, 0, 0, 0, 0, 0, 1]
             self.macroList = []
             self.resize(300, 560)
@@ -129,7 +131,6 @@ class MainApp(QMainWindow):
         self.ProgramSettingOn = False
 
         # var ###############################################
-        self.version = 'Beta3.2'
         self.filepath = ''
         self.allString = ''
         self.saveCheck = False
@@ -158,6 +159,7 @@ class MainApp(QMainWindow):
 
     # UI functions ######################################################
     def setMainMenubar(self):
+        """메인 메뉴바 생성하는 함수"""
         self.openFile = QAction('열기(&O)', self)
         self.openFile.triggered.connect(self.showFileDialog)
         self.openFile.setShortcut('Ctrl+O')
@@ -194,7 +196,6 @@ class MainApp(QMainWindow):
         self.setMacro = QAction('매크로 설정(&M)', self)
         self.setMacro.triggered.connect(self.setMacroDialog)
         self.setMacro.setShortcut('Ctrl+M')
-        self.macroSettingsWindow = QDialog(self)
 
         self.changeFont = QAction('글꼴(&F)', self)
         self.changeFont.triggered.connect(self.showFontDialog)
@@ -363,6 +364,7 @@ class MainApp(QMainWindow):
         self.helpMenu.addAction(self.information)
 
     def setMainToolbar(self):
+        """메인 툴바 생성하는 함수"""
         self.fileOpenAction = QAction(QIcon('icons/open.png'), 'FileOpen', self)
         self.fileOpenAction.setToolTip(
             '파일 열기 ( Ctrl+O )\n복사를 진행할 텍스트 파일을 불러옵니다.')
@@ -486,6 +488,7 @@ class MainApp(QMainWindow):
         self.toolbar.addWidget(self.pasteBigJPquotaionsAction)
 
     def setMainStatusbar(self):
+        """메인 스테이터스 바 생성하는 함수"""
         self.forVLine = QLabel("")
         self.lineStatus = QLabel(" 줄  ")
         self.setProgramStatus = QLabel(" 지정: 선택 안 함 ")
@@ -501,11 +504,12 @@ class MainApp(QMainWindow):
         self.vbox = QVBoxLayout()
         self.vbox.setContentsMargins(0, 0, 0, 0)  # 여백 없애기 1
         self.vbox.setSpacing(0)  # 여백 없애기 2
+        self.vbox.setAlignment(Qt.AlignTop)
         self.widget.setLayout(self.vbox)
 
         self.scroll = QScrollArea()
         self.setStyleSheet(
-            "QScrollArea {border: none;}")  # 스타일 이슈가 있음. 명확한 규명은 추후에...
+            "QScrollArea {border: none;}")
         self.hbar = self.scroll.horizontalScrollBar()
         self.setCentralWidget(self.scroll)
 
@@ -586,21 +590,22 @@ class MainApp(QMainWindow):
         idx = 0
         for i in range(len(temp1)):  # 수정된 텍스트로 교체
             if temp1[i] != '':
-                temp1[i] = temp2[idx][1]
+                temp1[i] = temp2[idx]
                 idx += 1
-            else:
-                pass
         txt = '\n'.join(temp1)
 
-        f = open(path, 'w', encoding='UTF8')    # 기본 UTF8로 저장
-        f.write(txt)
-        f.close()
-        self.statusbarmain.showMessage('저장 완료', 5000)
-        self.saveCheck = False
-        self.saveFile.setDisabled(True)
-        self.saveNewFile.setDisabled(True)
-        self.filepath = path
-        self.setWindowTitle(basename(path) + ' - 식붕이툴 ' + self.version)
+        try:
+            f = open(path, 'w', encoding='UTF8')  # 기본 UTF8로 저장
+            f.write(txt)
+            f.close()
+            self.statusbarmain.showMessage('저장 완료', 5000)
+            self.saveCheck = False
+            self.saveFile.setDisabled(True)
+            self.saveNewFile.setDisabled(True)
+            self.filepath = path
+            self.setWindowTitle(basename(path) + ' - 식붕이툴 ' + self.version)
+        except Exception as e:
+            QMessageBox.warning(self, "오류", "파일을 저장하지 못했습니다.\n" + str(e))
 
     def openTextFile(self, path):
         """텍스트 파일 열기 관련 함수"""
@@ -662,8 +667,7 @@ class MainApp(QMainWindow):
     def setBtnsForText(self):
         """불러온 텍스트 파일을 기반으로 scroll area 채우는 함수"""
         backup = []
-        # linenum = 0
-        connectnum = -1  # -1:X, 0:머리, 1:중간, 2:꼬리
+        connect_num = -1  # -1:X, 0:머리, 1:중간, 2:꼬리
         head = -1
         for i in range(self.linelen):
             if self.linetext[i] != '':
@@ -672,7 +676,6 @@ class MainApp(QMainWindow):
                     mode = 0    # 주석
                 else:
                     mode = 1    # 기본 버튼
-
                 if self.commentWithNumber:
                     if match("\d", self.linetext[i][0]):
                         mode = 0
@@ -681,34 +684,33 @@ class MainApp(QMainWindow):
                         mode = 0
 
                 if i + 1 < self.linelen:
-                    if connectnum == -1:
+                    if connect_num == -1:
                         if self.linetext[i + 1] != '':
-                            connectnum = 0
+                            connect_num = 0
                             head = linenum
-                    elif connectnum == 0:
+                    elif connect_num == 0:
                         if self.linetext[i + 1] != '':
-                            connectnum = 1
+                            connect_num = 1
                         else:
-                            connectnum = 2
-                    elif connectnum == 1:
+                            connect_num = 2
+                    elif connect_num == 1:
                         if self.linetext[i + 1] != '':
-                            connectnum == 1
+                            connect_num == 1
                         else:
-                            connectnum = 2
+                            connect_num = 2
                 else:
-                    if connectnum != -1:
-                        connectnum = 2
+                    if connect_num != -1:
+                        connect_num = 2
 
-                self.btn.append(TextLine(self, linenum, mode, self.linetext[i], connectnum, head))
-                backup.append((mode, self.linetext[i]))
+                self.btn.append(TextLine(self, linenum, mode, self.linetext[i], connect_num, head))
+                backup.append(self.linetext[i])
                 try:
                     self.btn[linenum].setFont(self.font)
                 except:
                     pass
                 self.vbox.addWidget(self.btn[linenum])
-                # linenum += 1
             else:
-                connectnum = -1
+                connect_num = -1
                 head = -1
 
         self.recordOfBtn.append(backup)
@@ -733,7 +735,15 @@ class MainApp(QMainWindow):
             if self.ProgramSettingOn:
                 self.autoStartAction.setEnabled(True)
                 self.startMode.setEnabled(True)
-                self.checkPhotoshop()
+                self.psAutoStartAction.setDisabled(True)
+                self.psMode.setDisabled(True)
+                self.psTISsettings.setDisabled(True)
+                self.psTISsettingsAction.setDisabled(True)
+                if self.checkPhotoshop():
+                    self.psAutoStartAction.setEnabled(True)
+                    self.psMode.setEnabled(True)
+                    self.psTISsettings.setEnabled(True)
+                    self.psTISsettingsAction.setEnabled(True)
             self.checkBookmark()
         else:   # 버튼이 하나도 없을 때는 세팅 ㄴㄴ
             self.statusbarmain.showMessage("빈 텍스트입니다.")
@@ -758,7 +768,6 @@ class MainApp(QMainWindow):
         titles = []
         filteredTitles = []
         temp = getAllTitles()
-
         temp = list(filter(lambda a: a != '', temp))  # 타이틀이 없는 정체불명인 것들이 많아서 일단 다 걸러줌
 
         for i in temp:    # 식붕이툴을 목록에서 지우기 위한 반복문
@@ -773,15 +782,13 @@ class MainApp(QMainWindow):
                 if getWindowsWithTitle(j)[0] == self.selectedProgram:
                     self.selectedProgramTitle = j
                     break
-            except:
+            except Exception as e:
                 QMessageBox.warning(self, "프로그램 지정 오류",
-                "프로그램 목록 생성에 실패했습니다.\n다시 시도해 주세요.")
+                "프로그램 목록 생성에 실패했습니다.\n다시 시도해 주세요.\n" + str(e))
         filteredTitles.append(self.selectedProgramTitle)
 
-        for k in titles:    # 이 부분에서 정제된 목록이 완성
-            if self.selectedProgramTitle in k:
-                pass
-            else:
+        for k in titles:  # 이 부분에서 정제된 목록이 완성
+            if self.selectedProgramTitle not in k:
                 filteredTitles.append(k)
         items = tuple(filteredTitles)
         item, ok = QInputDialog.getItem(
@@ -794,48 +801,53 @@ class MainApp(QMainWindow):
                 self.setProgramStatus.setText(" 지정: " + item[:15] + '... ')
             else:
                 self.setProgramStatus.setText(" 지정: " + item + ' ')
+        self.setToolMenuAfterSetPrgm(item)
 
-            if item == '선택 안 함':
-                self.ProgramSettingOn = False
-                self.autoStartAction.setDisabled(True)
-                self.startMode.setDisabled(True)
-            else:
-                try:
-                    self.selectedProgram = getWindowsWithTitle(item)[0]
-                except:
-                    self.resetForProgramError()
+    def setToolMenuAfterSetPrgm(self, item):
+        """프로그램 지정 이후, 메뉴바와 툴바 세팅하는 함수"""
+        if item == '선택 안 함':
+            self.ProgramSettingOn = False
+            self.autoStartAction.setDisabled(True)
+            self.startMode.setDisabled(True)
+            self.psTISsettings.setDisabled(True)
+            self.psTISsettingsAction.setDisabled(True)
+            self.psAutoStartAction.setDisabled(True)
+            self.psMode.setDisabled(True)
+        else:
+            try:
+                self.selectedProgram = getWindowsWithTitle(item)[0]
                 self.ProgramSettingOn = True
+                if self.checkPhotoshop():
+                    self.psTISsettings.setEnabled(True)
+                    self.psTISsettingsAction.setEnabled(True)
+                    self.psAutoStartAction.setEnabled(True)
+                    self.psMode.setEnabled(True)
                 if len(self.btn) != 0:
                     self.autoStartAction.setEnabled(True)
                     self.startMode.setEnabled(True)
-                    self.checkPhotoshop()
+                else:
+                    self.psAutoStartAction.setDisabled(True)
+                    self.psMode.setDisabled(True)
                 self.statusbarmain.showMessage("프로그램 지정 완료", 5000)
+            except:
+                self.resetForProgramError()
 
     def advSettingsDialogShow(self):
         """고급 설정 창 생성 함수"""
         dialog = AdvSettingsDialog(self)
 
     def psTISsettingsDialogShow(self):
+        """대사별 포토샵 문자 설정 창 생성 함수"""
         dialog = TextItemStyleDialog(self)
 
-    def checkPhotoshop(self):
+    def checkPhotoshop(self) -> bool:
         """지정된 프로그램이 포토샵인지 확인하는 함수"""
-        # self.psAutoStartAction.setDisabled(True)
-        # self.psMode.setDisabled(True)
         # check = False
         try:
             threadid, pid = GetWindowThreadProcessId(self.selectedProgram._hWnd)
             if 'Photoshop' in Prss(pid).name():
+                return True
             # temp = win32com.client.GetActiveObject("Photoshop.Application")  # 포토샵 앱 불러오기
-                self.psAutoStartAction.setEnabled(True)
-                self.psMode.setEnabled(True)
-                self.psTISsettings.setEnabled(True)
-                self.psTISsettingsAction.setEnabled(True)
-            else:
-                self.psAutoStartAction.setDisabled(True)
-                self.psMode.setDisabled(True)
-                self.psTISsettings.setDisabled(True)
-                self.psTISsettingsAction.setDisabled(True)
             # 여러 변수를 고려하여 포토샵이 실행만 되어 있으면 활성화되는 것으로 변경
             # if "Photoshop" in self.selectedProgramTitle:
             #     check = True
@@ -856,12 +868,8 @@ class MainApp(QMainWindow):
             #         QMessageBox.warning(self, "포토샵 모드 오류",
             #         "레이어를 닫은 다음에\n다시 지정해 주세요.")
         except Exception as e:
-            QMessageBox.warning(self, "포토샵 체크 오류", str(e))
-            self.psAutoStartAction.setDisabled(True)
-            self.psMode.setDisabled(True)
-            self.psTISsettings.setDisabled(True)
-            self.psTISsettingsAction.setDisabled(True)
-
+            QMessageBox.warning(self, "포토샵 체크 오류\n" + str(e))
+            return False
         # if check:
         #     self.psAutoStartAction.setEnabled(True)
         #     self.psMode.setEnabled(True)
@@ -871,6 +879,7 @@ class MainApp(QMainWindow):
 
     # main functions #########################################################
     def setStayOnTop(self):
+        """항상 위에 고정 설정 함수"""
         if self.stayOnTop.isChecked():
             self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         else:
@@ -934,6 +943,8 @@ class MainApp(QMainWindow):
             self.setProgram.setDisabled(True)
             self.fileOpenAction.setDisabled(True)
             self.openFile.setDisabled(True)
+            self.psTISsettings.setDisabled(True)
+            self.psTISsettingsAction.setDisabled(True)
             self.statusbarmain.showMessage("포토샵 모드 On")
 
             self.psAutoThreadStart()
@@ -943,6 +954,8 @@ class MainApp(QMainWindow):
                 self.setProgram.setEnabled(True)
                 self.fileOpenAction.setEnabled(True)
                 self.openFile.setEnabled(True)
+                self.psTISsettings.setEnabled(True)
+                self.psTISsettingsAction.setEnabled(True)
             self.statusbarmain.showMessage("포토샵 모드 Off", 5000)
 
     def psAutoThreadStart(self):
@@ -994,7 +1007,7 @@ class MainApp(QMainWindow):
 
     def setMacroDialog(self):
         """매크로 설정 창 생성 함수"""
-        self.macroSettingsWindow = MacroSetDialog(self)
+        dialog = MacroSetDialog(self)
 
     def macroStartByToolbar(self):
         """툴바에서 매크로 모드를 켤 때 거쳐가는 함수"""
@@ -1053,7 +1066,7 @@ class MainApp(QMainWindow):
         """현재 텍스트 상태를 백업하는 함수"""
         temp = []
         for i in self.btn:
-            temp.append((i.mode, i.txt))
+            temp.append(i.txt)
         return temp
 
     def recordChange(self):
@@ -1081,7 +1094,7 @@ class MainApp(QMainWindow):
 
         self.saveCheck = False
         for i in range(len(temp1)):
-            if temp1[i] != temp2[i][1]:
+            if temp1[i] != temp2[i]:
                 self.saveCheck = True
                 break
         if self.saveCheck:
@@ -1098,8 +1111,7 @@ class MainApp(QMainWindow):
         self.recordOfBtnIndex -= 1
         temp = self.recordOfBtn[self.recordOfBtnIndex]
         for i in range(len(self.btn)):
-            self.btn[i].mode = temp[i][0]
-            self.btn[i].txt = temp[i][1]
+            self.btn[i].txt = temp[i]
             self.btn[i].setLine()
 
         self.redoEdit.setEnabled(True)
@@ -1113,8 +1125,7 @@ class MainApp(QMainWindow):
         self.recordOfBtnIndex += 1
         temp = self.recordOfBtn[self.recordOfBtnIndex]
         for i in range(len(self.btn)):
-            self.btn[i].mode = temp[i][0]
-            self.btn[i].txt = temp[i][1]
+            self.btn[i].txt = temp[i]
             self.btn[i].setLine()
 
         self.undoEdit.setEnabled(True)
@@ -1171,10 +1182,12 @@ class MainApp(QMainWindow):
     def textFind(self):
         """찾기 창 생성 함수"""
         self.textfindwindow = TextFindDialog(self)
+        # show()로 실행하는 다이얼로그는 self 변수로 해서 close() 실행을 용이하게.
 
     def textChange(self):
         """텍스트 바꾸기 창 생성 함수"""
         self.textchangewindow = TextChangeDialog(self)
+        # show()로 실행하는 다이얼로그는 self 변수로 해서 close() 실행을 용이하게.
 
     def changeThreePoint(self):
         """아래점 세 개 줄임표로 바꾸는 함수"""
@@ -1260,10 +1273,6 @@ class MainApp(QMainWindow):
             self.findEdit.setDisabled(True)
             self.changeEdit.setDisabled(True)
             self.chgTPEdit.setDisabled(True)
-            self.fiveUpEdit.setDisabled(True)
-            self.oneUpEdit.setDisabled(True)
-            self.oneDownEdit.setDisabled(True)
-            self.fiveDownEdit.setDisabled(True)
             self.changeFont.setDisabled(True)
             self.textfindwindow.close()
             self.textchangewindow.close()
@@ -1339,7 +1348,7 @@ class MainApp(QMainWindow):
                 self.selectedProgram.restore()
             else:
                 SetForegroundWindow(self.selectedProgram._hWnd)
-        except:  # 초기화나 마찬가지
+        except:
             self.resetForProgramError()
 
     def setToolbarVisible(self):

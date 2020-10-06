@@ -35,7 +35,6 @@ class AdvSettingsDialog(QDialog):
         grid.addLayout(layer, 3, 0)
 
         self.setLayout(grid)
-
         self.setWindowTitle('고급 설정')
         self.setWindowIcon(QIcon("icons/advset.png"))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
