@@ -965,6 +965,8 @@ class MainApp(QMainWindow):
             self.setProgram.setDisabled(True)
             self.fileOpenAction.setDisabled(True)
             self.openFile.setDisabled(True)
+            self.psTISsettings.setDisabled(True)
+            self.psTISsettingsAction.setDisabled(True)
             self.statusbarmain.showMessage("자동 모드 On")
         else:
             if not self.psAutoStartAction.isChecked():
@@ -972,6 +974,8 @@ class MainApp(QMainWindow):
                 self.setProgram.setEnabled(True)
                 self.fileOpenAction.setEnabled(True)
                 self.openFile.setEnabled(True)
+                self.psTISsettings.setEnabled(True)
+                self.psTISsettingsAction.setEnabled(True)
             self.statusbarmain.showMessage("자동 모드 Off", 5000)
 
     def psAutoStartByMenu(self):
