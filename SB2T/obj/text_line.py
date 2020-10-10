@@ -270,7 +270,6 @@ class TextLine(QPushButton):
                 menu.addAction(self.disconnectAction)
             else:
                 menu.addAction(self.connectAction)
-        menu.addSeparator()
         if self.parent.bookmark == self.num:
             menu.addAction(self.delBmkAction)
         else:
