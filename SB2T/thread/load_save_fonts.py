@@ -1,4 +1,6 @@
+from os import name
 import photoshop.api as ps
+import pythoncom
 from PyQt5.QtCore import pyqtSignal, QThread
 
 """
@@ -21,18 +23,23 @@ class LoadAndSaveFonts(QThread):
 
     def exec(self):
         try:
+            pythoncom.CoInitialize()
             self.font_list = ps.Application().fonts.getFontList()
             self.atr = self.parent.tempAtr
-            self.savePostscriptName('conversation')
-            self.savePostscriptName('emphasis')
-            self.savePostscriptName('narration')
-            self.savePostscriptName('think')
-            self.savePostscriptName('background')
-            self.savePostscriptName('effect')
-
+            if self.parent.selectedTIS == 'none':
+                self.savePostscriptName('conversation')
+                self.savePostscriptName('emphasis')
+                self.savePostscriptName('narration')
+                self.savePostscriptName('think')
+                self.savePostscriptName('background')
+                self.savePostscriptName('effect')
+            else:
+                for i in self.parent.f_list:
+                    self.savePostscriptName(i)
             self.loadSignal.emit(True)
         except:
             self.loadSignal.emit(False)
+        pythoncom.CoUninitialize()
         self.quit()
 
     def savePostscriptName(self, attribute):
@@ -44,11 +51,16 @@ class LoadAndSaveFonts(QThread):
 
     def getPostscriptName(self, family) -> str:
         """family를 받아 postscript 이름을 반환하는 함수"""
+        # ff = open('test for fonts.txt', 'a', encoding='UTF8')
         for f in self.font_list:
             try:
-                if f.family == family:
+                # ff.write(f.name + '\n')
+                if f.family in family:
+                    # ff.close()
                     return f.postScriptName
-            except:
-                print('pass')
+            except Exception as e:
+                # ff.close()
+                # print(str(e))
                 pass
+        # ff.close()
         return 'none'

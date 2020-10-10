@@ -84,7 +84,8 @@ class TextChangeDialog(QDialog):
         temp2 = self.textedit2.text()
         i = self.findlist[self.index]
 
-        self.parent.btn[i].setText(self.parent.btn[i].text().replace(temp1, temp2))
+        self.parent.btn[i].txt = self.parent.btn[i].txt.replace(temp1, temp2)
+        self.parent.btn[i].setLine()
         # self.parent.btn[i].setText(self.parent.btn[i].text().replace(temp1, temp2, 1))
         self.findlist.remove(i)
         self.listlen = len(self.findlist)
@@ -111,8 +112,8 @@ class TextChangeDialog(QDialog):
         temp2 = self.textedit2.text()
 
         for i in self.findlist:
-            self.parent.btn[i].setText(
-                self.parent.btn[i].text().replace(temp1, temp2))
+            self.parent.btn[i].txt = self.parent.btn[i].txt.replace(temp1, temp2)
+            self.parent.btn[i].setLine()
         self.findit(temp1)
         self.parent.recordChange()
 

@@ -1,4 +1,4 @@
-import photoshop.api as ps
+# import photoshop.api as ps
 from os import remove, path
 
 from PyQt5.QtWidgets import (
@@ -10,10 +10,9 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, QSize
 
-from pyautogui import hotkey, position
+from pyautogui import hotkey
 from clipboard import copy, paste
 import time
-from re import match
 
 from SB2T.dialog import TextEditDialog
 
@@ -349,7 +348,6 @@ class TextLine(QPushButton):
 
     def setActiveConnection(self, boolean):
         """연결 활성화하는 함수"""
-        mode = 0
         i = self.head
         while True:
             self.parent.btn[i].act_connection = boolean
@@ -484,10 +482,11 @@ class TextLine(QPushButton):
         if self.parent.psAutoStartAction.isEnabled():
             if self.attribute != 'none' and self.parent.currentTextItemStyle != None:
                 hotkey('ctrl', 'enter')
-                app = ps.Application()
+                # app = ps.Application()
                 while True:  # hotkey가 스레드 형식?인 것 같아서 activelayer 오류가 뜸. 그래서 불가피하게 반복문을...
                     try:
-                        item = app.ActiveDocument.ActiveLayer.textItem
+                        # item = app.ActiveDocument.ActiveLayer.textItem
+                        item = self.parent.ps_app.ActiveDocument.ActiveLayer.textItem
                         self.setStyleOfTextItem(item)
                         break
                     except:
@@ -505,10 +504,11 @@ class TextLine(QPushButton):
 
     def pasteTextPSMode(self):
         """PS 모드 시 적용되는 붙여넣기 함수"""
-        app = ps.Application()
+        # app = ps.Application()
         while True:
             try:
-                item = app.ActiveDocument.ActiveLayer.textItem
+                # item = app.ActiveDocument.ActiveLayer.textItem
+                item = self.parent.ps_app.ActiveDocument.ActiveLayer.textItem
                 item.contents = paste()  # 텍스트 레이어 내용물 변경
                 if self.attribute != 'none' and self.parent.currentTextItemStyle != None:
                     self.setStyleOfTextItem(item)
@@ -530,7 +530,7 @@ class TextLine(QPushButton):
         else:
             attribute = self.attribute
         if atr[attribute]['activate']:
-            if atr[attribute]['font'] != 'none':
+            if atr[attribute]['family'] != 'none':
                 item.font = atr[attribute]['font']
             if atr[attribute]['size'] != 'none':
                 item.size = atr[attribute]['size']

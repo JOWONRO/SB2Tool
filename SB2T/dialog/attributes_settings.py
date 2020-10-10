@@ -26,6 +26,7 @@ class SetAttributeDialog(QDialog):
         super().__init__(None, Qt.WindowStaysOnTopHint)
         self.parent = parent
         self.selectedIdx = selectedIdx
+        self.tempAtr = AttributeOfTextItem()
         # self.font_list = font_list
 
         lbl_name = QLabel('이름:')
@@ -34,11 +35,9 @@ class SetAttributeDialog(QDialog):
 
         if self.selectedIdx != 'none':
             self.selectedTIS = self.parent.parent.textItemStyleList[self.selectedIdx]
-            self.tempAtr = self.selectedTIS
-            self.lineEdit.setText(self.tempAtr.name)
+            self.lineEdit.setText(self.selectedTIS.name)
         else:
             self.selectedTIS = 'none'
-            self.tempAtr = AttributeOfTextItem()
             self.lineEdit.setText('기본 설정')
 
         btn = QPushButton('저장')
@@ -90,19 +89,46 @@ class SetAttributeDialog(QDialog):
 
     def saveAtr(self):
         """문자 설정을 저장하는 함수"""
-        load_dialog = LoadingDialog(self, '저장 중입니다...', 'icons/setpsmode.png')
-
         style_list = self.parent.parent.textItemStyleList
         self.tempAtr.name = self.lineEdit.text()
 
-        if self.selectedTIS != 'none':
-            style_list[self.selectedIdx] = self.tempAtr
-        else:
+        if self.selectedTIS == 'none':
+            load_dialog = LoadingDialog(self, '저장 중입니다...', 'icons/setpsmode.png')
             style_list.append(self.tempAtr)
+            # print(self.tempAtr.attributes['conversation'])
+        else:
+            self.f_list = self.isEditedFamily()
+            if len(self.f_list) > 0:
+                load_dialog = LoadingDialog(self, '저장 중입니다...', 'icons/setpsmode.png')
+            style_list[self.selectedIdx] = self.tempAtr
+            # print(self.tempAtr.attributes['conversation'])
         self.parent.listUp()
         self.parent.updateComBoxForTIS()
-        # print('save -> ' + self.parent.parent.textItemStyleList[self.selectedIdx].attributes['conversation']['family'])  # 디버깅
         self.close()
+
+    def isEditedFamily(self) -> list:
+        """폰트 수정한 부분 있는지 확인하는 함수"""
+        temp = []
+        if (self.tempAtr.attributes['conversation']['family'] != 
+        self.selectedTIS.attributes['conversation']['family']):
+            temp.append('conversation')
+        elif (self.tempAtr.attributes['emphasis']['family'] != 
+        self.selectedTIS.attributes['emphasis']['family']):
+            temp.append('emphasis')
+        elif (self.tempAtr.attributes['narration']['family'] != 
+        self.selectedTIS.attributes['narration']['family']):
+            temp.append('narration')
+        elif (self.tempAtr.attributes['think']['family'] != 
+        self.selectedTIS.attributes['think']['family']):
+            temp.append('think')
+        elif (self.tempAtr.attributes['background']['family'] != 
+        self.selectedTIS.attributes['background']['family']):
+            temp.append('background')
+        elif (self.tempAtr.attributes['effect']['family'] != 
+        self.selectedTIS.attributes['effect']['family']):
+            temp.append('effect')
+
+        return temp
 
 
 class SetAttributeGrid(QGridLayout):

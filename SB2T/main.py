@@ -1,4 +1,5 @@
 # import win32com.client
+import photoshop.api as ps
 from os.path import basename, exists
 
 from PyQt5.QtWidgets import (
@@ -24,11 +25,11 @@ from pyautogui import hotkey, getWindowsWithTitle, getAllTitles
 from clipboard import copy
 from win32gui import SetForegroundWindow
 from win32process import GetWindowThreadProcessId
-from psutil import Process as Prss
-from multiprocessing import Process
+from psutil import Process as Prcss
+from multiprocessing import Process, freeze_support
 from re import match
 
-from SB2T.obj import TextLine, MacroStartwithProcess, AttributeOfTextItem
+from SB2T.obj import TextLine, MacroStartwithProcess
 from SB2T.dialog import (
     AdvSettingsDialog,
     TextFindDialog,
@@ -77,9 +78,9 @@ class MainApp(QMainWindow):
         except:
             self.notFirstStart = False
         if not self.notFirstStart:  # 초기화
-            self.advSettingsList = [1, 0, 0, 0, 0, 0, 0, 0, 1]
+            self.advSettingsList = [1, 0, 0, 0, 0, 0, 1, 1, 1]
             self.macroList = []
-            self.resize(300, 560)
+            self.resize(291, 618)
             self.notFirstStart = True
             self.textItemStyleList = []
             self.currentTextItemStyle = None
@@ -90,7 +91,7 @@ class MainApp(QMainWindow):
                 self.restoreState(self.settings.value("State"))
             except Exception as e:
                 QMessageBox.warning(self, "오류", "UI 설정에 실패했습니다.\n" + str(e))
-                self.resize(300, 560)
+                self.resize(291, 618)
             try:
                 self.macroList = self.settings.value("MacroList", [], str)
             except Exception as e:
@@ -116,7 +117,7 @@ class MainApp(QMainWindow):
                 self.onTopDefault = self.advSettingsList[8]
             except Exception as e:
                 QMessageBox.warning(self, "오류", "고급 설정을 불러오지 못했습니다.\n" + str(e))
-                self.advSettingsList = [1, 0, 0, 0, 0, 0, 0, 0, 1]
+                self.advSettingsList = [1, 0, 0, 0, 0, 0, 1, 1, 1]
             try:
                 self.font = self.settings.value("LastFont")
             except Exception as e:
@@ -258,6 +259,21 @@ class MainApp(QMainWindow):
         self.pasteEdit.setShortcut('S')
         self.pasteEdit.setDisabled(True)
 
+        self.linkEdit = QAction('모든 묶음 활성화(&L)')
+        self.linkEdit.triggered.connect(self.setLinkAll)
+        self.linkEdit.setShortcut('Ctrl+L')
+        self.linkEdit.setDisabled(True)
+
+        self.unlinkEdit = QAction('모든 묶음 비활성화(&K)')
+        self.unlinkEdit.triggered.connect(self.setUnlinkAll)
+        self.unlinkEdit.setShortcut('Ctrl+U')
+        self.unlinkEdit.setDisabled(True)
+
+        self.goBmkEdit = QAction('책갈피로 이동(&B)', self)
+        self.goBmkEdit.triggered.connect(self.goToBookmark)
+        self.goBmkEdit.setShortcut('Ctrl+B')
+        self.goBmkEdit.setDisabled(True)
+
         self.findEdit = QAction('찾기(&F)', self)
         self.findEdit.triggered.connect(self.textFind)
         self.findEdit.setShortcut('Ctrl+F')
@@ -271,11 +287,6 @@ class MainApp(QMainWindow):
         self.chgTPEdit = QAction('아래점 바꾸기(&T)', self)
         self.chgTPEdit.triggered.connect(self.changeThreePoint)
         self.chgTPEdit.setDisabled(True)
-
-        self.goBmkEdit = QAction('책갈피로 이동(&B)', self)
-        self.goBmkEdit.triggered.connect(self.goToBookmark)
-        self.goBmkEdit.setShortcut('Ctrl+B')
-        self.goBmkEdit.setDisabled(True)
 
         self.undoEdit = QAction('바꾸기 취소(&U)')
         self.undoEdit.triggered.connect(self.undoChange)
@@ -344,7 +355,10 @@ class MainApp(QMainWindow):
         self.editMenu.addAction(self.oneDownEdit)
         self.editMenu.addAction(self.fiveDownEdit)
         self.editMenu.addSeparator()
+        self.editMenu.addAction(self.linkEdit)
+        self.editMenu.addAction(self.unlinkEdit)
         self.editMenu.addAction(self.goBmkEdit)
+        self.editMenu.addSeparator()
         self.editMenu.addAction(self.findEdit)
         self.editMenu.addAction(self.changeEdit)
         self.editMenu.addAction(self.chgTPEdit)
@@ -408,6 +422,16 @@ class MainApp(QMainWindow):
         # self.resetRecordAction.setToolTip('기록 초기화 (Del)\n붙여넣기 기록을 모두 초기화합니다.')
         # self.resetRecordAction.triggered.connect(self.resetAllRecord)
         # self.resetRecordAction.setDisabled(True)
+
+        self.linkAction = QAction(QIcon('icons/link.png'), 'SetLink', self)
+        self.linkAction.setToolTip('모든 묶음 활성화 ( Ctrl+L )\n모든 텍스트 묶음을 활성화합니다.')
+        self.linkAction.triggered.connect(self.setLinkAll)
+        self.linkAction.setDisabled(True)
+
+        self.unlinkAction = QAction(QIcon('icons/unlink.png'), 'SetUnlink', self)
+        self.unlinkAction.setToolTip('모든 묶음 비활성화 ( Ctrl+U )\n모든 텍스트 묶음을 비활성화합니다.')
+        self.unlinkAction.triggered.connect(self.setUnlinkAll)
+        self.unlinkAction.setDisabled(True)
 
         self.textFindAction = QAction(QIcon('icons/find.png'), 'TextFind', self)
         self.textFindAction.setToolTip('찾기 ( Ctrl+F )\n특정 텍스트를 검색하여 복사합니다.')
@@ -476,7 +500,10 @@ class MainApp(QMainWindow):
         self.toolbar.addAction(self.macroStartAction)
         self.toolbar.addSeparator()
         # self.toolbar.addAction(self.resetRecordAction)
+        self.toolbar.addAction(self.linkAction)
+        self.toolbar.addAction(self.unlinkAction)
         self.toolbar.addAction(self.goBookmarkAction)
+        self.toolbar.addSeparator()
         self.toolbar.addAction(self.textFindAction)
         self.toolbar.addAction(self.textChangeAction)
         self.toolbar.addAction(self.threePointChangeAction)
@@ -637,6 +664,10 @@ class MainApp(QMainWindow):
         self.textFindAction.setDisabled(True)
         self.textChangeAction.setDisabled(True)
         self.threePointChangeAction.setDisabled(True)
+        self.linkAction.setDisabled(True)
+        self.unlinkAction.setDisabled(True)
+        self.linkEdit.setDisabled(True)
+        self.unlinkEdit.setDisabled(True)
         self.findEdit.setDisabled(True)
         self.changeEdit.setDisabled(True)
         self.chgTPEdit.setDisabled(True)
@@ -727,6 +758,10 @@ class MainApp(QMainWindow):
             self.textFindAction.setEnabled(True)
             self.textChangeAction.setEnabled(True)
             self.threePointChangeAction.setEnabled(True)
+            self.linkAction.setEnabled(True)
+            self.unlinkAction.setEnabled(True)
+            self.linkEdit.setEnabled(True)
+            self.unlinkEdit.setEnabled(True)
             self.findEdit.setEnabled(True)
             self.changeEdit.setEnabled(True)
             self.chgTPEdit.setEnabled(True)
@@ -845,7 +880,8 @@ class MainApp(QMainWindow):
         # check = False
         try:
             threadid, pid = GetWindowThreadProcessId(self.selectedProgram._hWnd)
-            if 'Photoshop' in Prss(pid).name():
+            if 'Photoshop' in Prcss(pid).name():
+                self.ps_app = ps.Application()
                 return True
             # temp = win32com.client.GetActiveObject("Photoshop.Application")  # 포토샵 앱 불러오기
             # 여러 변수를 고려하여 포토샵이 실행만 되어 있으면 활성화되는 것으로 변경
@@ -885,6 +921,20 @@ class MainApp(QMainWindow):
         else:
             self.setWindowFlag(Qt.WindowStaysOnTopHint, False)
         self.show()  # 소름 돋게도 show 다시 안 해주면 메인 윈도우창이 사라짐 ㄷㄷ
+
+    def setLinkAll(self):
+        """모든 텍스트라인 묶음을 활성화하는 함수"""
+        for i in self.btn:
+            if i.act_connection == 0 and i.connected_mode != -1:
+                i.setActiveConnection(True)
+        self.statusbarmain.showMessage('모든 텍스트라인 묶음 활성화', 5000)
+
+    def setUnlinkAll(self):
+        """모든 텍스트라인 묶음을 비활성화하는 함수"""
+        for i in self.btn:
+            if i.act_connection == 1 and i.connected_mode != -1:
+                i.setActiveConnection(False)
+        self.statusbarmain.showMessage('모든 텍스트라인 묶음 비활성화', 5000)
 
     def goToBookmark(self):
         """책갈피가 있는 줄로 스크롤되는 함수"""
@@ -1111,8 +1161,11 @@ class MainApp(QMainWindow):
         self.recordOfBtnIndex -= 1
         temp = self.recordOfBtn[self.recordOfBtnIndex]
         for i in range(len(self.btn)):
-            self.btn[i].txt = temp[i]
-            self.btn[i].setLine()
+            if self.btn[i].txt != temp[i]:
+                self.btn[i].txt = temp[i]
+                self.btn[i].setLine()
+                self.scroll.ensureWidgetVisible(self.btn[i], 0, 0)
+                self.hbar.setValue(self.hbar.minimum())
 
         self.redoEdit.setEnabled(True)
         if self.recordOfBtnIndex < 1:
@@ -1125,8 +1178,11 @@ class MainApp(QMainWindow):
         self.recordOfBtnIndex += 1
         temp = self.recordOfBtn[self.recordOfBtnIndex]
         for i in range(len(self.btn)):
-            self.btn[i].txt = temp[i]
-            self.btn[i].setLine()
+            if self.btn[i].txt != temp[i]:
+                self.btn[i].txt = temp[i]
+                self.btn[i].setLine()
+                self.scroll.ensureWidgetVisible(self.btn[i], 0, 0)
+                self.hbar.setValue(self.hbar.minimum())
 
         self.undoEdit.setEnabled(True)
         if self.recordOfBtnIndex == len(self.recordOfBtn) - 1:
@@ -1192,10 +1248,9 @@ class MainApp(QMainWindow):
     def changeThreePoint(self):
         """아래점 세 개 줄임표로 바꾸는 함수"""
         check = 0
-        for i in range(len(self.btn)):
-            txt = self.btn[i].text()
-            if '...' in txt:
-                self.btn[i].setText(txt.replace('...', '…'))
+        for i in self.btn:
+            if '...' in i.txt:
+                i.txt = i.txt.replace('...', '…')
                 check = 1
         if check:
             self.recordChange()
@@ -1270,6 +1325,10 @@ class MainApp(QMainWindow):
             self.textFindAction.setDisabled(True)
             self.textChangeAction.setDisabled(True)
             self.threePointChangeAction.setDisabled(True)
+            self.linkAction.setDisabled(True)
+            self.unlinkAction.setDisabled(True)
+            self.linkEdit.setDisabled(True)
+            self.unlinkEdit.setDisabled(True)
             self.findEdit.setDisabled(True)
             self.changeEdit.setDisabled(True)
             self.chgTPEdit.setDisabled(True)
@@ -1339,7 +1398,7 @@ class MainApp(QMainWindow):
             "<br><br>제작: <span style='font-weight: bold;'>고리성운</span><br>"
             "문의: <a href='https://docs.google.com/spreadsheets/d/1L4ai00inqZpMqeJuhz7bOCdrWgMTYHEZKl7EXY-nHqM/edit?usp=sharing'>구글 시트 링크</a>"
             "<br>제작자 블로그: <a href='https://blog.naver.com/dnjsfh611'>블로그 링크</a>"
-            "<br><br>Special Thanks to : <br>함정, 공포투성이의 너" )
+            "<br><br>Special Thanks to : <br>함정, 공포투성이의 너, ENE" )
 
     def windowFocus(self):
         """지정한 프로그램을 최상위로 옮겨 focus 하는 함수"""
@@ -1360,6 +1419,8 @@ class MainApp(QMainWindow):
 
     def closeEvent(self, event):
         """종료 시 이벤트 함수"""
+        # print(str(self.size()))
+
         # reply = QMessageBox.question(
         #     self, '종료', '정말로 종료하시겠습니까?',
         #     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)

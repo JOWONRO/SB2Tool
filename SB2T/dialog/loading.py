@@ -21,9 +21,9 @@ class LoadingDialog(QDialog):
         self.txt = txt
         self.icon = icon
 
-        load_thread = LoadAndSaveFonts(self.parent)
-        load_thread.start()
-        load_thread.loadSignal.connect(self.finishLoading)
+        self.load_thread = LoadAndSaveFonts(self.parent)
+        self.load_thread.start()
+        self.load_thread.loadSignal.connect(self.finishLoading)
 
         lbl = QLabel(txt)
         pbar = QProgressBar()
@@ -44,7 +44,9 @@ class LoadingDialog(QDialog):
     def finishLoading(self, check):
         """로딩을 종료하는 함수"""
         if check:
+            self.load_thread.wait()
             self.close()
         else:
             QMessageBox.warning(self, "오류", "글꼴을 저장하지 못했습니다.")
+            self.load_thread.wait()
             self.close()

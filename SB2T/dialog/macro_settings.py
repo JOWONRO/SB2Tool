@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 
-from SB2T.dialog import MacroAddDialog
+from .macro_add import MacroAddDialog
 
 
 class MacroSetDialog(QDialog):

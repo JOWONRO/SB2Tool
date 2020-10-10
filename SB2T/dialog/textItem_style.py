@@ -12,7 +12,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 
 from SB2T.obj import AttributeOfTextItem
-from SB2T.dialog import SetAttributeDialog#, LoadingDialog
+from .attributes_settings import SetAttributeDialog
 
 
 class TextItemStyleDialog(QDialog):

@@ -24,8 +24,11 @@ class StartPsThread(QThread):
                     # or ("레이어" in layername) or ("Layer" in layername)):
                     #     self.psTextLayerSignal.emit(True)
                     #     break
-                if (layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do" 
-                or match("^레이어 [0-9]+$", layername) or match("^Layer [0-9]+$", layername)):
+                # if (layername == "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do"
+                if ("Lorem Ipsum" in layername 
+                or "Lorem ipsum dolor sit amet," in layername 
+                or match("^레이어 [0-9]+$", layername) 
+                or match("^Layer [0-9]+$", layername)):
                     self.psTextLayerSignal.emit(True)
                     break
             except:
