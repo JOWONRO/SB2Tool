@@ -55,7 +55,7 @@ class LoadAndSaveFonts(QThread):
         for f in self.font_list:
             try:
                 # ff.write(f.name + '\n')
-                if f.family in family:
+                if f.family in family:  # 추후 세 단계로 수정, strict 체크 -> in 체크 + 마지막 글자 대조 -> in 체크 only
                     # ff.close()
                     return f.postScriptName
             except Exception as e:
