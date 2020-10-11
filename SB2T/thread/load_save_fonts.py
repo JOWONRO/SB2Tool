@@ -52,15 +52,28 @@ class LoadAndSaveFonts(QThread):
     def getPostscriptName(self, family) -> str:
         """family를 받아 postscript 이름을 반환하는 함수"""
         # ff = open('test for fonts.txt', 'a', encoding='UTF8')
-        for f in self.font_list:
-            try:
+        try:  # strict하게 폰트 검사
+            for f in self.font_list:
                 # ff.write(f.name + '\n')
-                if f.family in family:  # 추후 세 단계로 수정, strict 체크 -> in 체크 + 마지막 글자 대조 -> in 체크 only
+                if f.family == family:
                     # ff.close()
                     return f.postScriptName
-            except Exception as e:
+        except Exception as e:
                 # ff.close()
                 # print(str(e))
                 pass
+        try:  # in으로 검사 및 name의 마지막 문자 비교 (M, B 등의 구분)
+            for f in self.font_list:
+                if f.family in family:
+                    if f.name[-1] == family[-1]:
+                        return f.postScriptName
+        except:
+            pass
+        try:  # in으로만 검사
+            for f in self.font_list:
+                if f.family in family:
+                    return f.postScriptName
+        except:
+            pass
         # ff.close()
         return 'none'
