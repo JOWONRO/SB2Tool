@@ -12,7 +12,7 @@
 # 최근 업데이트 내용 정리
 ## Beta3.2
 - 대사 태그별 포토샵 문자 설정 가능 -> 태그: 대화, 생각, 강조, 독백, 배경, 효과
-- 포토샵 모드 활성화 방식 변경(버그 수정) -> win32com.client.GetActiveObject("Photoshop.Application") 삭제
+- 포토샵 모드 활성화 방식 변경(버그 수정) -> GetActiveObject("Photoshop.Application")를 사용하지 않고 프로세스를 직접 검색하여 확인하는 방식으로 변경
 - 책갈피 표시 방식 변경
 - 모든 텍스트 묶음 활성화 및 비활성화 기능 추가
 - 초기 메인 윈도우 창 크기 변경
