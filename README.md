@@ -3,7 +3,7 @@
 - backuptest 압축파일의 경우, pyinstaller로 식붕이툴을 실행파일로 만들었을 때 생기는 파일들 중, 프로그램 실행에 영향을 끼치지 않아 제외해도 되는 파일들을 모아놓음. tcl, tk는 안에 dummy.txt만 생성해 놓고 다 빼도 됨.
 
 각종 링크들
-- 설치파일 다운로드 : https://drive.google.com/file/d/1Eh_qFd1z4a-s9qlpdN-OK0l2TEcCocrB/view?usp=sharing
+- 설치파일 다운로드 : https://maldnza-my.sharepoint.com/:u:/g/personal/a8261_365word_vip/EZH6vzgytN5Jv_R_vFImrv8Blkb4CGEbGXT2vEphbOL1tg?e=SeqwX4
 - 매뉴얼 : https://docs.google.com/document/d/1JzMC_iyi265wXQv3zo2yEuC0qF0_NcdVGzgWb15UWig/edit?usp=sharing
 - 버그 제보 및 피드백 : https://docs.google.com/spreadsheets/d/1L4ai00inqZpMqeJuhz7bOCdrWgMTYHEZKl7EXY-nHqM/edit?usp=sharing
 
