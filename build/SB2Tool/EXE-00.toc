@@ -29,6 +29,9 @@
   ('pyi_rth_pyqt5',
    'C:\\Python\\Python38\\Lib\\site-packages\\PyInstaller\\loader\\rthooks\\pyi_rth_pyqt5.py',
    'PYSOURCE'),
+  ('pyi_rth_win32comgenpy',
+   'C:\\Python\\Python38\\Lib\\site-packages\\PyInstaller\\loader\\rthooks\\pyi_rth_win32comgenpy.py',
+   'PYSOURCE'),
   ('pyi_rth_multiprocessing',
    'C:\\Python\\Python38\\Lib\\site-packages\\PyInstaller\\loader\\rthooks\\pyi_rth_multiprocessing.py',
    'PYSOURCE'),
@@ -39,7 +42,7 @@
  [],
  False,
  False,
- 1602430309,
+ 1611386377,
  [('runw.exe',
    'c:\\python\\python38\\lib\\site-packages\\PyInstaller\\bootloader\\Windows-64bit\\runw.exe',
    'EXECUTABLE')])

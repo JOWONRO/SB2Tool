@@ -1,5 +1,6 @@
-# import win32com.client
+import win32com.client
 import photoshop.api as ps
+import pythoncom
 from os.path import basename, exists
 
 from PyQt5.QtWidgets import (
@@ -26,7 +27,7 @@ from clipboard import copy
 from win32gui import SetForegroundWindow
 from win32process import GetWindowThreadProcessId
 from psutil import Process as Prcss
-from multiprocessing import Process, freeze_support
+from multiprocessing import Process
 from re import match
 
 from SB2T.obj import TextLine, MacroStartwithProcess
@@ -47,11 +48,14 @@ class MainApp(QMainWindow):
     def __init__(self):
         super().__init__(None, Qt.WindowStaysOnTopHint)
         self.settings = QSettings("RingNebula", "SB2Tool")
-        self.version = 'Beta3.2'
+        self.version = 'Beta3.3'
         self.font = QFont()
         self.toolbar = QToolBar("기본 툴바")
         self.addToolBar(Qt.LeftToolBarArea, self.toolbar)
         self.toolbar.setObjectName("DefaultToolbar")  # 이거 안 하면 설정 저장에서 오류 뜸
+        self.toolbarSym = QToolBar('기호 툴바')
+        self.addToolBar(Qt.BottomToolBarArea, self.toolbarSym)
+        self.toolbarSym.setObjectName('SymbolToolbar')
         self.macroList = []
         self.textItemStyleList = []
         self.currentTextItemStyle = None
@@ -156,6 +160,7 @@ class MainApp(QMainWindow):
 
         self.setWindowTitle('식붕이툴 ' + self.version)
         self.setWindowIcon(QIcon('icons/sbticon.png'))
+        self.setAcceptDrops(True)
         self.show()
 
     # UI functions ######################################################
@@ -207,7 +212,7 @@ class MainApp(QMainWindow):
         self.advSettings.setShortcut('F2')
 
         self.psTISsettings = QAction('대사별 문자 설정(&B)', self)
-        self.psTISsettings.setIcon(QIcon('icons/psmode.png'))
+        self.psTISsettings.setIcon(QIcon('icons/setpsmode.png'))
         self.psTISsettings.triggered.connect(self.psTISsettingsDialogShow)
         self.psTISsettings.setShortcut('Ctrl+T')
         self.psTISsettings.setDisabled(True)
@@ -301,7 +306,7 @@ class MainApp(QMainWindow):
         self.thrpntEdit = QAction("줄임표 '…' 복사(&1)")
         self.thrpntEdit.triggered.connect(self.pasteThreePoint)
 
-        self.hlineEdit = QAction("가로 줄표 '─' 복사(&2)")
+        self.hlineEdit = QAction("가로 줄표 '―' 복사(&2)")
         self.hlineEdit.triggered.connect(self.pasteLongHLine)
 
         self.vlineEdit = QAction("세로 줄표 '│' 복사(&3)")
@@ -312,6 +317,15 @@ class MainApp(QMainWindow):
 
         self.bigqtnEdit = QAction("겹낫표 '『』' 복사(&5)")
         self.bigqtnEdit.triggered.connect(self.pasteBigJPquotaions)
+
+        self.empHrtEdit = QAction("겹낫표 '♡' 복사(&6)")
+        self.empHrtEdit.triggered.connect(self.pasteEmpHeart)
+
+        self.fullHrtEdit = QAction("겹낫표 '♥' 복사(&7)")
+        self.fullHrtEdit.triggered.connect(self.pasteFullHeart)
+
+        self.note8Edit = QAction("겹낫표 '♪' 복사(&8)")
+        self.note8Edit.triggered.connect(self.paste8Note)
 
         self.tutorial = QAction('매뉴얼(&M)', self)
         self.tutorial.setShortcut('F1')
@@ -335,8 +349,8 @@ class MainApp(QMainWindow):
 
         self.configMenu = self.menubar.addMenu('설정(&S)')
         self.configMenu.addAction(self.setProgram)
-        self.configMenu.addAction(self.psTISsettings)
         self.configMenu.addAction(self.setMacro)
+        self.configMenu.addAction(self.psTISsettings)
         self.configMenu.addSeparator()
         self.configMenu.addAction(self.changeFont)
         self.configMenu.addAction(self.advSettings)
@@ -372,6 +386,9 @@ class MainApp(QMainWindow):
         self.symbolMenu.addAction(self.vlineEdit)
         self.symbolMenu.addAction(self.litqtnEdit)
         self.symbolMenu.addAction(self.bigqtnEdit)
+        self.symbolMenu.addAction(self.empHrtEdit)
+        self.symbolMenu.addAction(self.fullHrtEdit)
+        self.symbolMenu.addAction(self.note8Edit)
 
         self.helpMenu = self.menubar.addMenu('도움말(&H)')
         self.helpMenu.addAction(self.tutorial)
@@ -381,7 +398,7 @@ class MainApp(QMainWindow):
         """메인 툴바 생성하는 함수"""
         self.fileOpenAction = QAction(QIcon('icons/open.png'), 'FileOpen', self)
         self.fileOpenAction.setToolTip(
-            '파일 열기 ( Ctrl+O )\n복사를 진행할 텍스트 파일을 불러옵니다.')
+            '파일 열기 ( Ctrl+O )\n복사를 진행할 텍스트 파일을 불러옵니다.\n자동 모드나 포토샵 모드가 켜져 있으면 비활성화됩니다.')
         self.fileOpenAction.triggered.connect(self.showFileDialog)
 
         self.setProgramForPasteAction = QAction(
@@ -466,9 +483,9 @@ class MainApp(QMainWindow):
         self.pasteThreePointAction.clicked.connect(self.pasteThreePoint)
         self.pasteThreePointAction.setFixedSize(30, 30)
 
-        self.pasteLongHLineAction = QPushButton('─', self)
+        self.pasteLongHLineAction = QPushButton('―', self)
         self.pasteLongHLineAction.setToolTip(
-            "가로 줄표 '─' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
+            "가로 줄표 '―' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
         self.pasteLongHLineAction.clicked.connect(self.pasteLongHLine)
         self.pasteLongHLineAction.setFixedSize(30, 30)
 
@@ -490,9 +507,27 @@ class MainApp(QMainWindow):
         self.pasteLittleJPquotaionsAction.clicked.connect(self.pasteLittleJPquotaions)
         self.pasteLittleJPquotaionsAction.setFixedSize(30, 30)
 
+        self.pasteEmpHeartAction = QPushButton('♡', self)
+        self.pasteEmpHeartAction.setToolTip(
+            "빈 하트 '♡' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
+        self.pasteEmpHeartAction.clicked.connect(self.pasteEmpHeart)
+        self.pasteEmpHeartAction.setFixedSize(30, 30)
+
+        self.pasteFullHeartAction = QPushButton('♥', self)
+        self.pasteFullHeartAction.setToolTip(
+            "꽉 찬 하트 '♥' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
+        self.pasteFullHeartAction.clicked.connect(self.pasteFullHeart)
+        self.pasteFullHeartAction.setFixedSize(30, 30)
+
+        self.paste8NoteAction = QPushButton('♪', self)
+        self.paste8NoteAction.setToolTip(
+            "8분 음표 '♪' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
+        self.paste8NoteAction.clicked.connect(self.paste8Note)
+        self.paste8NoteAction.setFixedSize(30, 30)
+
         self.toolbar.addAction(self.fileOpenAction)
         self.toolbar.addAction(self.setProgramForPasteAction)
-        self.toolbar.addAction(self.psTISsettingsAction)
+        # self.toolbar.addAction(self.psTISsettingsAction)
         self.toolbar.addAction(self.setMacroAction)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.autoStartAction)
@@ -507,12 +542,15 @@ class MainApp(QMainWindow):
         self.toolbar.addAction(self.textFindAction)
         self.toolbar.addAction(self.textChangeAction)
         self.toolbar.addAction(self.threePointChangeAction)
-        self.toolbar.addSeparator()
-        self.toolbar.addWidget(self.pasteThreePointAction)
-        self.toolbar.addWidget(self.pasteLongHLineAction)
-        self.toolbar.addWidget(self.pasteLongVLineAction)
-        self.toolbar.addWidget(self.pasteLittleJPquotaionsAction)
-        self.toolbar.addWidget(self.pasteBigJPquotaionsAction)
+        # self.toolbar.addSeparator()
+        self.toolbarSym.addWidget(self.pasteThreePointAction)
+        self.toolbarSym.addWidget(self.pasteLongHLineAction)
+        self.toolbarSym.addWidget(self.pasteLongVLineAction)
+        self.toolbarSym.addWidget(self.pasteLittleJPquotaionsAction)
+        self.toolbarSym.addWidget(self.pasteBigJPquotaionsAction)
+        self.toolbarSym.addWidget(self.pasteEmpHeartAction)
+        self.toolbarSym.addWidget(self.pasteFullHeartAction)
+        self.toolbarSym.addWidget(self.paste8NoteAction)
 
     def setMainStatusbar(self):
         """메인 스테이터스 바 생성하는 함수"""
@@ -544,7 +582,7 @@ class MainApp(QMainWindow):
         self.scroll.setWidgetResizable(True)
         self.scroll.setWidget(self.widget)
 
-        self.setAcceptDrops(True)
+        # self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event):
         """드래그 삽입 이벤트 관련 함수"""
@@ -648,7 +686,7 @@ class MainApp(QMainWindow):
                     filepath = f.name
                 self.setStatusAfterOpenTxt(data, filepath)
             except Exception as e:
-                QMessageBox.warning(self, "파일 불러오기 오류",
+                QMessageBox.warning(self, "파일 불러오기 오류", 
                 "파일을 불러오지 못했습니다.\n" + str(e))
 
     def setStatusAfterOpenTxt(self, data, path):
@@ -770,15 +808,23 @@ class MainApp(QMainWindow):
             if self.ProgramSettingOn:
                 self.autoStartAction.setEnabled(True)
                 self.startMode.setEnabled(True)
-                self.psAutoStartAction.setDisabled(True)
-                self.psMode.setDisabled(True)
-                self.psTISsettings.setDisabled(True)
-                self.psTISsettingsAction.setDisabled(True)
                 if self.checkPhotoshop():
                     self.psAutoStartAction.setEnabled(True)
                     self.psMode.setEnabled(True)
                     self.psTISsettings.setEnabled(True)
                     self.psTISsettingsAction.setEnabled(True)
+                else:
+                    self.psTISsettings.setDisabled(True)
+                    self.psTISsettingsAction.setDisabled(True)
+                    self.psAutoStartAction.setDisabled(True)
+                    self.psMode.setDisabled(True)
+            else:
+                self.autoStartAction.setDisabled(True)
+                self.startMode.setDisabled(True)
+                self.psTISsettings.setDisabled(True)
+                self.psTISsettingsAction.setDisabled(True)
+                self.psAutoStartAction.setDisabled(True)
+                self.psMode.setDisabled(True)
             self.checkBookmark()
         else:   # 버튼이 하나도 없을 때는 세팅 ㄴㄴ
             self.statusbarmain.showMessage("빈 텍스트입니다.")
@@ -840,6 +886,7 @@ class MainApp(QMainWindow):
 
     def setToolMenuAfterSetPrgm(self, item):
         """프로그램 지정 이후, 메뉴바와 툴바 세팅하는 함수"""
+        check = False
         if item == '선택 안 함':
             self.ProgramSettingOn = False
             self.autoStartAction.setDisabled(True)
@@ -851,21 +898,36 @@ class MainApp(QMainWindow):
         else:
             try:
                 self.selectedProgram = getWindowsWithTitle(item)[0]
-                self.ProgramSettingOn = True
+                check = True
+            except Exception as e:
+                self.resetForProgramError(str(e))
+            self.ProgramSettingOn = check
+            if check:
                 if self.checkPhotoshop():
                     self.psTISsettings.setEnabled(True)
                     self.psTISsettingsAction.setEnabled(True)
-                    self.psAutoStartAction.setEnabled(True)
-                    self.psMode.setEnabled(True)
-                if len(self.btn) != 0:
-                    self.autoStartAction.setEnabled(True)
-                    self.startMode.setEnabled(True)
+                    if len(self.btn) != 0:
+                        self.autoStartAction.setEnabled(True)
+                        self.startMode.setEnabled(True)
+                        self.psAutoStartAction.setEnabled(True)
+                        self.psMode.setEnabled(True)
+                    else:
+                        self.autoStartAction.setDisabled(True)
+                        self.startMode.setDisabled(True)
+                        self.psAutoStartAction.setDisabled(True)
+                        self.psMode.setDisabled(True)
                 else:
+                    if len(self.btn) != 0:
+                        self.autoStartAction.setEnabled(True)
+                        self.startMode.setEnabled(True)
+                    else:
+                        self.autoStartAction.setDisabled(True)
+                        self.startMode.setDisabled(True)
+                    self.psTISsettings.setDisabled(True)
+                    self.psTISsettingsAction.setDisabled(True)
                     self.psAutoStartAction.setDisabled(True)
                     self.psMode.setDisabled(True)
                 self.statusbarmain.showMessage("프로그램 지정 완료", 5000)
-            except:
-                self.resetForProgramError()
 
     def advSettingsDialogShow(self):
         """고급 설정 창 생성 함수"""
@@ -878,11 +940,14 @@ class MainApp(QMainWindow):
     def checkPhotoshop(self) -> bool:
         """지정된 프로그램이 포토샵인지 확인하는 함수"""
         # check = False
+        pythoncom.CoInitialize()
+        check = False
+        test = True
         try:
             threadid, pid = GetWindowThreadProcessId(self.selectedProgram._hWnd)
             if 'Photoshop' in Prcss(pid).name():
-                self.ps_app = ps.Application()
-                return True
+                check = True
+            test = False
             # temp = win32com.client.GetActiveObject("Photoshop.Application")  # 포토샵 앱 불러오기
             # 여러 변수를 고려하여 포토샵이 실행만 되어 있으면 활성화되는 것으로 변경
             # if "Photoshop" in self.selectedProgramTitle:
@@ -904,8 +969,26 @@ class MainApp(QMainWindow):
             #         QMessageBox.warning(self, "포토샵 모드 오류",
             #         "레이어를 닫은 다음에\n다시 지정해 주세요.")
         except Exception as e:
-            QMessageBox.warning(self, "포토샵 체크 오류\n" + str(e))
-            return False
+            QMessageBox.warning(self, "오류", 
+            "프로세스 체크 오류!\n" + str(e))
+
+        if test:
+            try:
+                temp = win32com.client.GetActiveObject("Photoshop.Application")
+                check = True
+            except Exception as e:
+                QMessageBox.warning(self, "오류", 
+                "포토샵 체크 오류!\n자동 모드는 가능합니다.\n" + str(e))
+
+        if check:
+            try:
+                self.ps_app = ps.Application()
+            except Exception as e:
+                check = False
+                QMessageBox.warning(self, "오류", 
+                "포토샵 연동에 실패했습니다!\n자동 모드는 가능합니다.\n" + str(e))
+        pythoncom.CoUninitialize()
+        return check
         # if check:
         #     self.psAutoStartAction.setEnabled(True)
         #     self.psMode.setEnabled(True)
@@ -1031,7 +1114,7 @@ class MainApp(QMainWindow):
                 self.btn[self.lineCnt[0]].copyText()
                 self.btn[self.lineCnt[0]].pasteTextPSMode()
             else:
-                self.resetForProgramError()
+                self.resetForProgramError('')
         except:
             self.psAutoStartAction.toggle()
             self.psMode.toggle()
@@ -1270,8 +1353,8 @@ class MainApp(QMainWindow):
 
     def pasteLongHLine(self):
         """줄표(가로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('─')
-        self.statusbarmain.showMessage("'─'를 복사했습니다.", 5000)
+        copy('―')
+        self.statusbarmain.showMessage("'―'를 복사했습니다.", 5000)
         if self.autoStartAction.isChecked():
             self.windowFocus()
             hotkey('ctrl', 'v')
@@ -1296,6 +1379,30 @@ class MainApp(QMainWindow):
         """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
         copy('『』')
         self.statusbarmain.showMessage("'『』'를 복사했습니다.", 5000)
+        if self.autoStartAction.isChecked():
+            self.windowFocus()
+            hotkey('ctrl', 'v')
+
+    def pasteEmpHeart(self):
+        """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
+        copy('♡')
+        self.statusbarmain.showMessage("'♡'를 복사했습니다.", 5000)
+        if self.autoStartAction.isChecked():
+            self.windowFocus()
+            hotkey('ctrl', 'v')
+
+    def pasteFullHeart(self):
+        """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
+        copy('♥')
+        self.statusbarmain.showMessage("'♥'를 복사했습니다.", 5000)
+        if self.autoStartAction.isChecked():
+            self.windowFocus()
+            hotkey('ctrl', 'v')
+
+    def paste8Note(self):
+        """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
+        copy('♪')
+        self.statusbarmain.showMessage("'♪'를 복사했습니다.", 5000)
         if self.autoStartAction.isChecked():
             self.windowFocus()
             hotkey('ctrl', 'v')
@@ -1357,7 +1464,7 @@ class MainApp(QMainWindow):
         else:
             pass
 
-    def resetForProgramError(self):
+    def resetForProgramError(self, e):
         """지정된 프로그램에 문제가 생겼을 시 실행되는 함수"""
         if self.psThreadfunc.isRunning():
             self.psThreadfunc.terminate()
@@ -1385,7 +1492,7 @@ class MainApp(QMainWindow):
         self.resetAllRecord()
 
         QMessageBox.warning(self, "프로그램 오류",
-                            "지정한 프로그램에 문제가 생겼습니다.\n프로그램을 다시 지정해 주세요.")
+                            "지정한 프로그램에 문제가 생겼습니다.\n프로그램을 다시 지정해 주세요.\n" + e)
         self.statusbarmain.showMessage("오류: 지정한 프로그램에 문제가 생겼습니다.", 5000)
 
     def tutorialLink(self):
@@ -1411,8 +1518,8 @@ class MainApp(QMainWindow):
                 self.selectedProgram.restore()
             else:
                 SetForegroundWindow(self.selectedProgram._hWnd)
-        except:
-            self.resetForProgramError()
+        except Exception as e:
+            self.resetForProgramError(str(e))
 
     def setToolbarVisible(self):
         """툴바를 숨기거나 표시하는 함수"""

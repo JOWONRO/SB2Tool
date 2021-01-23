@@ -80,6 +80,8 @@ class TextLine(QPushButton):
                     elif temp == '배경':
                         self.attribute = 'background'
                         self.setIcon(QIcon('icons/background.png'))
+                    else:
+                        self.setText(self.txt)
                 except:
                     self.setText(self.txt)
             else:
