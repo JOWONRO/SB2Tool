@@ -55,13 +55,18 @@ class TextFindDialog(QDialog):
         self.resultlbl.setText('검색 결과: 0 / 0 줄')
         if txt != '':
             for i in range(len(self.parent.btn)):
-                if self.parent.btn[i].mode:   # 일단 주석은 제외
-                    if txt in self.parent.btn[i].text():
-                        self.findlist.append(i)
+                # if self.parent.btn[i].mode:   # 일단 주석은 제외
+                if txt in self.parent.btn[i].text():
+                    self.findlist.append(i)
             self.listlen = len(self.findlist)
             if self.listlen > 0:
                 self.resultlbl.setText('검색 결과: 1 / ' + str(self.listlen) + ' 줄')
-                self.parent.btn[self.findlist[0]].copyText()
+                idx = self.findlist[0]
+                if self.parent.btn[idx].mode:
+                    self.parent.btn[idx].copyText()
+                else:
+                    self.parent.btn[idx].autoScroll(self.parent.btn[idx].num)
+                    self.parent.hbar.setValue(self.parent.hbar.minimum())
                 self.btn1.setEnabled(True)
                 self.btn2.setEnabled(True)
 
@@ -70,7 +75,12 @@ class TextFindDialog(QDialog):
         self.index = (self.index + 1) % self.listlen
         self.resultlbl.setText(
             '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
-        self.parent.btn[self.findlist[self.index]].copyText()
+        idx = self.findlist[self.index]
+        if self.parent.btn[idx].mode:
+            self.parent.btn[idx].copyText()
+        else:
+            self.parent.btn[idx].autoScroll(self.parent.btn[idx].num)
+            self.parent.hbar.setValue(self.parent.hbar.minimum())
 
     def beforeResult(self):
         """이전 검색 결과로 넘어가는 함수"""
@@ -80,5 +90,10 @@ class TextFindDialog(QDialog):
             self.index -= 1
         self.resultlbl.setText(
             '검색 결과: ' + str(self.index + 1) + ' / ' + str(self.listlen) + ' 줄')
-        self.parent.btn[self.findlist[self.index]].copyText()
+        idx = self.findlist[self.index]
+        if self.parent.btn[idx].mode:
+            self.parent.btn[idx].copyText()
+        else:
+            self.parent.btn[idx].autoScroll(self.parent.btn[idx].num)
+            self.parent.hbar.setValue(self.parent.hbar.minimum())
 

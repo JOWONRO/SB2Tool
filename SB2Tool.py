@@ -13,3 +13,13 @@ if __name__ == '__main__':  # 이 if문을 안 넣으면 매크로 모드 실행
     ex = MainApp()
     sys.exit(app.exec_())
 
+
+
+
+##참고 사항##
+"""
+photoshop > api > _text_fonts.py > TextFonts
+맨 아래줄에 자체 코드 삽입
+    def getFontList(self):
+        return [TextFont(font) for font in self.app]
+"""

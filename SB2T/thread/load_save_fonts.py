@@ -22,8 +22,8 @@ class LoadAndSaveFonts(QThread):
         self.exec()
 
     def exec(self):
+        pythoncom.CoInitialize()
         try:
-            pythoncom.CoInitialize()
             self.font_list = ps.Application().fonts.getFontList()
             self.atr = self.parent.tempAtr
             if self.parent.selectedTIS == 'none':

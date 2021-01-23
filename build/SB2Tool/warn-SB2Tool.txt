@@ -77,4 +77,4 @@ excluded module named PIL - imported by pyscreeze (conditional, optional), mouse
 excluded module named numpy - imported by comtypes.npsupport (conditional, optional), comtypes.safearray (delayed, conditional), pyscreeze (optional)
 excluded module named cv2 - imported by pyscreeze (optional)
 missing module named sets - imported by comtypes.tools.typedesc_base (optional), comtypes.tools.tlbparser (optional), comtypes.tools.codegenerator (optional)
-missing module named multiprocessing.freeze_support - imported by multiprocessing (top-level), D:\coding\git\SB2Tool\SB2Tool.py (top-level), SB2T.main (top-level)
+missing module named multiprocessing.freeze_support - imported by multiprocessing (top-level), D:\coding\git\SB2Tool\SB2Tool.py (top-level)
