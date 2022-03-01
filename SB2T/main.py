@@ -78,7 +78,7 @@ class MainApp(QMainWindow):
     def checkLastSettings(self):
         """마지막으로 저장된 설정을 불러오는 함수"""
         try:
-            self.notFirstStart = self.settings.value("NotFirstStart")
+            self.notFirstStart = self.settings.value("NotFirstStart", False, bool)
         except:
             self.notFirstStart = False
         if not self.notFirstStart:  # 초기화
