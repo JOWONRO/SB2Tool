@@ -1,14 +1,7 @@
-from os import name
 import photoshop.api as ps
 import pythoncom
-from PyQt5.QtCore import pyqtSignal, QThread
+from PyQt5.QtCore import QThread, pyqtSignal
 
-"""
-photoshop > api > _text_fonts.py > TextFonts
-맨 아래줄에 자체 코드 삽입
-    def getFontList(self):
-        return [TextFont(font) for font in self.app]
-"""
 
 class LoadAndSaveFonts(QThread):
     """폰트를 로드하는 스레드 클래스"""
@@ -24,7 +17,7 @@ class LoadAndSaveFonts(QThread):
     def exec(self):
         pythoncom.CoInitialize()
         try:
-            self.font_list = ps.Application().fonts.getFontList()
+            self.font_list = ps.Application().fonts._fonts
             self.atr = self.parent.tempAtr
             if self.parent.selectedTIS == 'none':
                 self.savePostscriptName('conversation')
@@ -47,7 +40,8 @@ class LoadAndSaveFonts(QThread):
         if self.atr.attributes[attribute]['activate']:
             family = self.atr.attributes[attribute]['family']
             if family != 'none':
-                self.atr.attributes[attribute]['font'] = self.getPostscriptName(family)
+                self.atr.attributes[attribute]['font'] = self.getPostscriptName(
+                    family)
 
     def getPostscriptName(self, family) -> str:
         """family를 받아 postscript 이름을 반환하는 함수"""
@@ -56,22 +50,25 @@ class LoadAndSaveFonts(QThread):
             for f in self.font_list:
                 # ff.write(f.name + '\n')
                 if f.family == family:
+                    print(f.family)
                     # ff.close()
                     return f.postScriptName
         except Exception as e:
-                # ff.close()
-                # print(str(e))
-                pass
+            # ff.close()
+            # print(str(e))
+            pass
         try:  # in으로 검사 및 name의 마지막 문자 비교 (M, B 등의 구분)
             for f in self.font_list:
                 if f.family in family:
                     if f.name[-1] == family[-1]:
+                        print(f.family)
                         return f.postScriptName
         except:
             pass
         try:  # in으로만 검사
             for f in self.font_list:
                 if f.family in family:
+                    print(f.family)
                     return f.postScriptName
         except:
             pass
