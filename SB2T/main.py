@@ -87,10 +87,12 @@ class MainApp(QMainWindow):
                     self, "오류", "매크로 설정을 불러오지 못했습니다.\n" + str(e))
                 self.macroList = []
             try:
-                self.textItemStyleList = self.settings.value(
-                    "TextItemsSettings", [])
-                self.currentTextItemStyle = self.settings.value(
-                    "CurrentTextItem")
+                self.textItemStyleList = []
+                self.currentTextItemStyle = None
+                # self.textItemStyleList = self.settings.value(
+                #     "TextItemsSettings", [])
+                # self.currentTextItemStyle = self.settings.value(
+                #     "CurrentTextItem")
             except Exception as e:
                 QMessageBox.warning(
                     self, "오류", "대사별 문자 설정을 불러오지 못했습니다.\n" + str(e))
@@ -202,11 +204,11 @@ class MainApp(QMainWindow):
         self.advSettings.triggered.connect(self.advSettingsDialogShow)
         self.advSettings.setShortcut('F2')
 
-        self.psTISsettings = QAction('대사별 문자 설정(&B)', self)
-        self.psTISsettings.setIcon(QIcon('icons/setpsmode.png'))
-        self.psTISsettings.triggered.connect(self.psTISsettingsDialogShow)
-        self.psTISsettings.setShortcut('Ctrl+T')
-        self.psTISsettings.setDisabled(True)
+        # self.psTISsettings = QAction('대사별 문자 설정(&B)', self)
+        # self.psTISsettings.setIcon(QIcon('icons/setpsmode.png'))
+        # self.psTISsettings.triggered.connect(self.psTISsettingsDialogShow)
+        # self.psTISsettings.setShortcut('Ctrl+T')
+        # self.psTISsettings.setDisabled(True)
 
         self.startMode = QAction('자동 모드(&S)', self)
         self.startMode.setCheckable(True)
@@ -341,7 +343,7 @@ class MainApp(QMainWindow):
         self.configMenu = self.menubar.addMenu('설정(&S)')
         self.configMenu.addAction(self.setProgram)
         self.configMenu.addAction(self.setMacro)
-        self.configMenu.addAction(self.psTISsettings)
+        # self.configMenu.addAction(self.psTISsettings)
         self.configMenu.addSeparator()
         self.configMenu.addAction(self.changeFont)
         self.configMenu.addAction(self.advSettings)
@@ -405,13 +407,13 @@ class MainApp(QMainWindow):
         self.setMacroAction.setToolTip('매크로 설정 ( Ctrl+M )\n키보드 매크로를 설정합니다.')
         self.setMacroAction.triggered.connect(self.setMacroDialog)
 
-        self.psTISsettingsAction = QAction(
-            QIcon('icons/setpsmode.png'), 'setPSmode', self)
-        self.psTISsettingsAction.setToolTip(
-            '대사별 문자 설정 (Ctrl+T)\n포토샵 모드 전용 설정으로,\n대사 태그별로 문자 설정을 지정합니다.')
-        self.psTISsettingsAction.triggered.connect(
-            self.psTISsettingsDialogShow)
-        self.psTISsettingsAction.setDisabled(True)
+        # self.psTISsettingsAction = QAction(
+        #     QIcon('icons/setpsmode.png'), 'setPSmode', self)
+        # self.psTISsettingsAction.setToolTip(
+        #     '대사별 문자 설정 (Ctrl+T)\n포토샵 모드 전용 설정으로,\n대사 태그별로 문자 설정을 지정합니다.')
+        # self.psTISsettingsAction.triggered.connect(
+        #     self.psTISsettingsDialogShow)
+        # self.psTISsettingsAction.setDisabled(True)
 
         self.autoStartAction = QAction(
             QIcon("icons/auto.png"), 'AutoMode', self)
@@ -701,8 +703,8 @@ class MainApp(QMainWindow):
         self.filepath = path
         self.psAutoStartAction.setDisabled(True)
         self.psMode.setDisabled(True)
-        self.psTISsettings.setDisabled(True)
-        self.psTISsettingsAction.setDisabled(True)
+        # self.psTISsettings.setDisabled(True)
+        # self.psTISsettingsAction.setDisabled(True)
         self.autoStartAction.setDisabled(True)
         self.startMode.setDisabled(True)
         self.textFindAction.setDisabled(True)
@@ -771,7 +773,7 @@ class MainApp(QMainWindow):
                             connect_num = 2
                     elif connect_num == 1:
                         if self.linetext[i + 1] != '':
-                            connect_num == 1
+                            connect_num = 1
                         else:
                             connect_num = 2
                 else:
@@ -819,18 +821,18 @@ class MainApp(QMainWindow):
                 if self.checkPhotoshop():
                     self.psAutoStartAction.setEnabled(True)
                     self.psMode.setEnabled(True)
-                    self.psTISsettings.setEnabled(True)
-                    self.psTISsettingsAction.setEnabled(True)
+                    # self.psTISsettings.setEnabled(True)
+                    # self.psTISsettingsAction.setEnabled(True)
                 else:
-                    self.psTISsettings.setDisabled(True)
-                    self.psTISsettingsAction.setDisabled(True)
+                    # self.psTISsettings.setDisabled(True)
+                    # self.psTISsettingsAction.setDisabled(True)
                     self.psAutoStartAction.setDisabled(True)
                     self.psMode.setDisabled(True)
             else:
                 self.autoStartAction.setDisabled(True)
                 self.startMode.setDisabled(True)
-                self.psTISsettings.setDisabled(True)
-                self.psTISsettingsAction.setDisabled(True)
+                # self.psTISsettings.setDisabled(True)
+                # self.psTISsettingsAction.setDisabled(True)
                 self.psAutoStartAction.setDisabled(True)
                 self.psMode.setDisabled(True)
             self.checkBookmark()
@@ -900,8 +902,8 @@ class MainApp(QMainWindow):
             self.ProgramSettingOn = False
             self.autoStartAction.setDisabled(True)
             self.startMode.setDisabled(True)
-            self.psTISsettings.setDisabled(True)
-            self.psTISsettingsAction.setDisabled(True)
+            # self.psTISsettings.setDisabled(True)
+            # self.psTISsettingsAction.setDisabled(True)
             self.psAutoStartAction.setDisabled(True)
             self.psMode.setDisabled(True)
         else:
@@ -913,8 +915,8 @@ class MainApp(QMainWindow):
             self.ProgramSettingOn = check
             if check:
                 if self.checkPhotoshop():
-                    self.psTISsettings.setEnabled(True)
-                    self.psTISsettingsAction.setEnabled(True)
+                    # self.psTISsettings.setEnabled(True)
+                    # self.psTISsettingsAction.setEnabled(True)
                     if len(self.btn) != 0:
                         self.autoStartAction.setEnabled(True)
                         self.startMode.setEnabled(True)
@@ -932,8 +934,8 @@ class MainApp(QMainWindow):
                     else:
                         self.autoStartAction.setDisabled(True)
                         self.startMode.setDisabled(True)
-                    self.psTISsettings.setDisabled(True)
-                    self.psTISsettingsAction.setDisabled(True)
+                    # self.psTISsettings.setDisabled(True)
+                    # self.psTISsettingsAction.setDisabled(True)
                     self.psAutoStartAction.setDisabled(True)
                     self.psMode.setDisabled(True)
                 self.statusbarmain.showMessage("프로그램 지정 완료", 5000)
@@ -942,7 +944,7 @@ class MainApp(QMainWindow):
         """고급 설정 창 생성 함수"""
         dialog = AdvSettingsDialog(self)
 
-    def psTISsettingsDialogShow(self):
+    # def psTISsettingsDialogShow(self):
         """대사별 포토샵 문자 설정 창 생성 함수"""
         dialog = TextItemStyleDialog(self)
 
@@ -1056,15 +1058,15 @@ class MainApp(QMainWindow):
         if self.autoStartAction.isChecked():
             self.setProgramForPasteAction.setDisabled(True)
             self.setProgram.setDisabled(True)
-            self.psTISsettings.setDisabled(True)
-            self.psTISsettingsAction.setDisabled(True)
+            # self.psTISsettings.setDisabled(True)
+            # self.psTISsettingsAction.setDisabled(True)
             self.statusbarmain.showMessage("자동 모드 On")
         else:
             if not self.psAutoStartAction.isChecked():
                 self.setProgramForPasteAction.setEnabled(True)
                 self.setProgram.setEnabled(True)
-                self.psTISsettings.setEnabled(True)
-                self.psTISsettingsAction.setEnabled(True)
+                # self.psTISsettings.setEnabled(True)
+                # self.psTISsettingsAction.setEnabled(True)
             self.statusbarmain.showMessage("자동 모드 Off", 5000)
 
     def psAutoStartByMenu(self):
@@ -1084,8 +1086,8 @@ class MainApp(QMainWindow):
         if self.psAutoStartAction.isChecked():
             self.setProgramForPasteAction.setDisabled(True)
             self.setProgram.setDisabled(True)
-            self.psTISsettings.setDisabled(True)
-            self.psTISsettingsAction.setDisabled(True)
+            # self.psTISsettings.setDisabled(True)
+            # self.psTISsettingsAction.setDisabled(True)
             self.statusbarmain.showMessage("포토샵 모드 On")
 
             self.psAutoThreadStart()
@@ -1093,8 +1095,8 @@ class MainApp(QMainWindow):
             if not self.autoStartAction.isChecked():
                 self.setProgramForPasteAction.setEnabled(True)
                 self.setProgram.setEnabled(True)
-                self.psTISsettings.setEnabled(True)
-                self.psTISsettingsAction.setEnabled(True)
+                # self.psTISsettings.setEnabled(True)
+                # self.psTISsettingsAction.setEnabled(True)
             self.statusbarmain.showMessage("포토샵 모드 Off", 5000)
 
     def psAutoThreadStart(self):
@@ -1428,8 +1430,8 @@ class MainApp(QMainWindow):
                 self.startMode.toggle()
             self.psAutoStartAction.setDisabled(True)
             self.psMode.setDisabled(True)
-            self.psTISsettings.setDisabled(True)
-            self.psTISsettingsAction.setDisabled(True)
+            # self.psTISsettings.setDisabled(True)
+            # self.psTISsettingsAction.setDisabled(True)
             self.autoStartAction.setDisabled(True)
             self.startMode.setDisabled(True)
             self.ProgramSettingOn = False
@@ -1480,8 +1482,8 @@ class MainApp(QMainWindow):
             self.startMode.toggle()
         self.psAutoStartAction.setDisabled(True)
         self.psMode.setDisabled(True)
-        self.psTISsettings.setDisabled(True)
-        self.psTISsettingsAction.setDisabled(True)
+        # self.psTISsettings.setDisabled(True)
+        # self.psTISsettingsAction.setDisabled(True)
         self.autoStartAction.setDisabled(True)
         self.startMode.setDisabled(True)
         self.ProgramSettingOn = False
