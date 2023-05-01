@@ -575,12 +575,15 @@ class TextLine(QPushButton):
 
         self.parent.lineCntBack = self.parent.lineCnt[:]
 
-    def copyPasteEvent(self, parent):
+    def copyPasteEvent(self):
         """텍스트 라인 클릭 시 실행되는 함수\n
         기본 모드 시 복사만, 자동 모드 시 붙여넣기까지"""
         if self.mode:
             if self.parent.autoStartAction.isChecked():  # 자동 모드일 때
                 self.copyText()
                 self.pasteText()
+                if self.parent.ctrlVStartAction.isChecked():
+                    time.sleep(0.1)
+                    self.parent.nextLineCopy()  # Ctrl+V 모드가 같이 적용된 경우
             else:  # 기본 모드일 때. 클릭 시 복사만 진행
                 self.copyText()
