@@ -1056,8 +1056,6 @@ class MainApp(QMainWindow):
         if self.autoStartAction.isChecked():
             self.setProgramForPasteAction.setDisabled(True)
             self.setProgram.setDisabled(True)
-            self.fileOpenAction.setDisabled(True)
-            self.openFile.setDisabled(True)
             self.psTISsettings.setDisabled(True)
             self.psTISsettingsAction.setDisabled(True)
             self.statusbarmain.showMessage("자동 모드 On")
@@ -1065,8 +1063,6 @@ class MainApp(QMainWindow):
             if not self.psAutoStartAction.isChecked():
                 self.setProgramForPasteAction.setEnabled(True)
                 self.setProgram.setEnabled(True)
-                self.fileOpenAction.setEnabled(True)
-                self.openFile.setEnabled(True)
                 self.psTISsettings.setEnabled(True)
                 self.psTISsettingsAction.setEnabled(True)
             self.statusbarmain.showMessage("자동 모드 Off", 5000)
@@ -1088,8 +1084,6 @@ class MainApp(QMainWindow):
         if self.psAutoStartAction.isChecked():
             self.setProgramForPasteAction.setDisabled(True)
             self.setProgram.setDisabled(True)
-            self.fileOpenAction.setDisabled(True)
-            self.openFile.setDisabled(True)
             self.psTISsettings.setDisabled(True)
             self.psTISsettingsAction.setDisabled(True)
             self.statusbarmain.showMessage("포토샵 모드 On")
@@ -1099,8 +1093,6 @@ class MainApp(QMainWindow):
             if not self.autoStartAction.isChecked():
                 self.setProgramForPasteAction.setEnabled(True)
                 self.setProgram.setEnabled(True)
-                self.fileOpenAction.setEnabled(True)
-                self.openFile.setEnabled(True)
                 self.psTISsettings.setEnabled(True)
                 self.psTISsettingsAction.setEnabled(True)
             self.statusbarmain.showMessage("포토샵 모드 Off", 5000)
