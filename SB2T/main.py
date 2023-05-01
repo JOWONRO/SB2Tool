@@ -18,8 +18,8 @@ from PyQt5.QtWidgets import (QAction, QDialog, QFileDialog, QFontDialog,
 from win32gui import SetForegroundWindow
 from win32process import GetWindowThreadProcessId
 
-from SB2T.dialog import (AdvSettingsDialog, MacroSetDialog, TextChangeDialog,
-                         TextFindDialog, TextItemStyleDialog)
+from SB2T.dialog import (AdvSettingsDialog, MacroSetDialog, SymbolSetDialog,
+                         TextChangeDialog, TextFindDialog, TextItemStyleDialog)
 from SB2T.obj import MacroStartwithProcess, TextLine
 from SB2T.thread import CheckBmkThread, DetectCtrlV, StartPsThread
 
@@ -41,6 +41,7 @@ class MainApp(QMainWindow):
         self.addToolBar(Qt.BottomToolBarArea, self.toolbarSym)
         self.toolbarSym.setObjectName('SymbolToolbar')
         self.macroList = []
+        self.symbolList = []
         self.textItemStyleList = []
         self.currentTextItemStyle = None
         self.notFirstStart = True
@@ -69,6 +70,7 @@ class MainApp(QMainWindow):
         if not self.notFirstStart:  # 초기화
             self.advSettingsList = [1, 0, 0, 0, 0, 0, 1, 1, 1]
             self.macroList = []
+            self.symbolList = ['…', '―', '│', '「」', '『』', '♡', '♥', '♪']
             self.resize(291, 618)
             self.notFirstStart = True
             self.textItemStyleList = []
@@ -87,6 +89,12 @@ class MainApp(QMainWindow):
                 QMessageBox.warning(
                     self, "오류", "매크로 설정을 불러오지 못했습니다.\n" + str(e))
                 self.macroList = []
+            try:
+                self.symbolList = self.settings.value("SymbolList", [], str)
+            except Exception as e:
+                QMessageBox.warning(
+                    self, "오류", "특수기호 설정을 불러오지 못했습니다.\n" + str(e))
+                self.symbolList = ['…', '―', '│', '「」', '『』', '♡', '♥', '♪']
             try:
                 self.textItemStyleList = []
                 self.currentTextItemStyle = None
@@ -149,7 +157,9 @@ class MainApp(QMainWindow):
 
         # ================================UI================================
         self.setMainMenubar()
+        self.setSymbolMenubar()
         self.setMainToolbar()
+        self.setSymbolToolbar()
         self.setMainStatusbar()
 
         self.setWindowTitle('식붕이툴 ' + self.version)
@@ -167,7 +177,7 @@ class MainApp(QMainWindow):
         self.saveFile = QAction('저장(&S)', self)
         self.saveFile.triggered.connect(
             lambda: self.saveTextFile(self.filepath))
-        self.saveFile.setShortcut('Ctrl+S')
+        self.saveFile.setShortcut('Y')
         self.saveFile.setDisabled(True)
 
         self.saveNewFile = QAction('다른 이름으로 저장(&A)', self)
@@ -197,6 +207,10 @@ class MainApp(QMainWindow):
         self.setMacro = QAction('매크로 설정(&M)', self)
         self.setMacro.triggered.connect(self.setMacroDialog)
         self.setMacro.setShortcut('Ctrl+M')
+
+        self.setSymbol = QAction('특수문자 설정(&S)', self)
+        self.setSymbol.triggered.connect(self.setSymbolDialog)
+        self.setSymbol.setShortcut('Ctrl+Y')
 
         self.changeFont = QAction('글꼴(&F)', self)
         self.changeFont.triggered.connect(self.showFontDialog)
@@ -265,12 +279,12 @@ class MainApp(QMainWindow):
         self.pasteEdit.setShortcut('S')
         self.pasteEdit.setDisabled(True)
 
-        self.linkEdit = QAction('모든 묶음 활성화(&L)')
+        self.linkEdit = QAction('모든 묶음 활성화(&L)', self)
         self.linkEdit.triggered.connect(self.setLinkAll)
         self.linkEdit.setShortcut('Ctrl+L')
         self.linkEdit.setDisabled(True)
 
-        self.unlinkEdit = QAction('모든 묶음 비활성화(&K)')
+        self.unlinkEdit = QAction('모든 묶음 비활성화(&K)', self)
         self.unlinkEdit.triggered.connect(self.setUnlinkAll)
         self.unlinkEdit.setShortcut('Ctrl+U')
         self.unlinkEdit.setDisabled(True)
@@ -294,39 +308,15 @@ class MainApp(QMainWindow):
         self.chgTPEdit.triggered.connect(self.changeThreePoint)
         self.chgTPEdit.setDisabled(True)
 
-        self.undoEdit = QAction('바꾸기 취소(&U)')
+        self.undoEdit = QAction('바꾸기 취소(&U)', self)
         self.undoEdit.triggered.connect(self.undoChange)
         self.undoEdit.setShortcut('Ctrl+Z')
         self.undoEdit.setDisabled(True)
 
-        self.redoEdit = QAction('바꾸기 다시 실행(&R)')
+        self.redoEdit = QAction('바꾸기 다시 실행(&R)', self)
         self.redoEdit.triggered.connect(self.redoChange)
         self.redoEdit.setShortcut('Ctrl+X')
         self.redoEdit.setDisabled(True)
-
-        self.thrpntEdit = QAction("줄임표 '…' 복사(&1)")
-        self.thrpntEdit.triggered.connect(self.pasteThreePoint)
-
-        self.hlineEdit = QAction("가로 줄표 '―' 복사(&2)")
-        self.hlineEdit.triggered.connect(self.pasteLongHLine)
-
-        self.vlineEdit = QAction("세로 줄표 '│' 복사(&3)")
-        self.vlineEdit.triggered.connect(self.pasteLongVLine)
-
-        self.litqtnEdit = QAction("홑낫표 '「」' 복사(&4)")
-        self.litqtnEdit.triggered.connect(self.pasteLittleJPquotaions)
-
-        self.bigqtnEdit = QAction("겹낫표 '『』' 복사(&5)")
-        self.bigqtnEdit.triggered.connect(self.pasteBigJPquotaions)
-
-        self.empHrtEdit = QAction("겹낫표 '♡' 복사(&6)")
-        self.empHrtEdit.triggered.connect(self.pasteEmpHeart)
-
-        self.fullHrtEdit = QAction("겹낫표 '♥' 복사(&7)")
-        self.fullHrtEdit.triggered.connect(self.pasteFullHeart)
-
-        self.note8Edit = QAction("겹낫표 '♪' 복사(&8)")
-        self.note8Edit.triggered.connect(self.paste8Note)
 
         self.tutorial = QAction('매뉴얼(&M)', self)
         self.tutorial.setShortcut('F1')
@@ -351,6 +341,7 @@ class MainApp(QMainWindow):
         self.configMenu = self.menubar.addMenu('설정(&S)')
         self.configMenu.addAction(self.setProgram)
         self.configMenu.addAction(self.setMacro)
+        self.configMenu.addAction(self.setSymbol)
         # self.configMenu.addAction(self.psTISsettings)
         self.configMenu.addSeparator()
         self.configMenu.addAction(self.changeFont)
@@ -383,18 +374,22 @@ class MainApp(QMainWindow):
         self.editMenu.addSeparator()
 
         self.symbolMenu = self.editMenu.addMenu('특수 문자 복사(&P)')
-        self.symbolMenu.addAction(self.thrpntEdit)
-        self.symbolMenu.addAction(self.hlineEdit)
-        self.symbolMenu.addAction(self.vlineEdit)
-        self.symbolMenu.addAction(self.litqtnEdit)
-        self.symbolMenu.addAction(self.bigqtnEdit)
-        self.symbolMenu.addAction(self.empHrtEdit)
-        self.symbolMenu.addAction(self.fullHrtEdit)
-        self.symbolMenu.addAction(self.note8Edit)
 
         self.helpMenu = self.menubar.addMenu('도움말(&H)')
         self.helpMenu.addAction(self.tutorial)
         self.helpMenu.addAction(self.information)
+
+    def setSymbolMenubar(self):
+        """특수문자 메뉴 생성하는 함수"""
+        self.symbolMenu.clear()
+        for symbol in self.symbolList:
+            self.symbolMenu.addAction(self.getMenuActionOfSymbol(symbol))
+
+    def getMenuActionOfSymbol(self, symbol):
+        """메뉴 액션 가져오는 함수"""
+        action = QAction(f"'{symbol}' 복사", self)
+        action.triggered.connect(lambda: self.pasteSymbol(symbol))
+        return action
 
     def setMainToolbar(self):
         """메인 툴바 생성하는 함수"""
@@ -500,56 +495,6 @@ class MainApp(QMainWindow):
         self.goBookmarkAction.triggered.connect(self.goToBookmark)
         self.goBookmarkAction.setDisabled(True)
 
-        self.pasteThreePointAction = QPushButton("…", self)
-        self.pasteThreePointAction.setToolTip(
-            "줄임표 '…' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteThreePointAction.clicked.connect(self.pasteThreePoint)
-        self.pasteThreePointAction.setFixedSize(30, 30)
-
-        self.pasteLongHLineAction = QPushButton('―', self)
-        self.pasteLongHLineAction.setToolTip(
-            "가로 줄표 '―' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteLongHLineAction.clicked.connect(self.pasteLongHLine)
-        self.pasteLongHLineAction.setFixedSize(30, 30)
-
-        self.pasteLongVLineAction = QPushButton('│', self)
-        self.pasteLongVLineAction.setToolTip(
-            "세로 줄표 '│' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteLongVLineAction.clicked.connect(self.pasteLongVLine)
-        self.pasteLongVLineAction.setFixedSize(30, 30)
-
-        self.pasteBigJPquotaionsAction = QPushButton('『』', self)
-        self.pasteBigJPquotaionsAction.setToolTip(
-            "겹낫표 '『』' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteBigJPquotaionsAction.clicked.connect(
-            self.pasteBigJPquotaions)
-        self.pasteBigJPquotaionsAction.setFixedSize(30, 30)
-
-        self.pasteLittleJPquotaionsAction = QPushButton('「」', self)
-        self.pasteLittleJPquotaionsAction.setToolTip(
-            "홑낫표 '「」' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteLittleJPquotaionsAction.clicked.connect(
-            self.pasteLittleJPquotaions)
-        self.pasteLittleJPquotaionsAction.setFixedSize(30, 30)
-
-        self.pasteEmpHeartAction = QPushButton('♡', self)
-        self.pasteEmpHeartAction.setToolTip(
-            "빈 하트 '♡' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteEmpHeartAction.clicked.connect(self.pasteEmpHeart)
-        self.pasteEmpHeartAction.setFixedSize(30, 30)
-
-        self.pasteFullHeartAction = QPushButton('♥', self)
-        self.pasteFullHeartAction.setToolTip(
-            "꽉 찬 하트 '♥' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteFullHeartAction.clicked.connect(self.pasteFullHeart)
-        self.pasteFullHeartAction.setFixedSize(30, 30)
-
-        self.paste8NoteAction = QPushButton('♪', self)
-        self.paste8NoteAction.setToolTip(
-            "8분 음표 '♪' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.paste8NoteAction.clicked.connect(self.paste8Note)
-        self.paste8NoteAction.setFixedSize(30, 30)
-
         self.toolbar.addAction(self.fileOpenAction)
         self.toolbar.addAction(self.setProgramForPasteAction)
         # self.toolbar.addAction(self.psTISsettingsAction)
@@ -569,14 +514,21 @@ class MainApp(QMainWindow):
         self.toolbar.addAction(self.textChangeAction)
         self.toolbar.addAction(self.threePointChangeAction)
         # self.toolbar.addSeparator()
-        self.toolbarSym.addWidget(self.pasteThreePointAction)
-        self.toolbarSym.addWidget(self.pasteLongHLineAction)
-        self.toolbarSym.addWidget(self.pasteLongVLineAction)
-        self.toolbarSym.addWidget(self.pasteLittleJPquotaionsAction)
-        self.toolbarSym.addWidget(self.pasteBigJPquotaionsAction)
-        self.toolbarSym.addWidget(self.pasteEmpHeartAction)
-        self.toolbarSym.addWidget(self.pasteFullHeartAction)
-        self.toolbarSym.addWidget(self.paste8NoteAction)
+
+    def setSymbolToolbar(self):
+        """특수문자 툴바 생성하는 함수"""
+        self.toolbarSym.clear()
+        for symbol in self.symbolList:
+            self.toolbarSym.addWidget(self.getActionOfSymbol(symbol))
+
+    def getActionOfSymbol(self, symbol):
+        """툴바 액션 가져오는 함수"""
+        action = QPushButton(symbol, self)
+        action.setToolTip(
+            f"'{symbol}' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
+        action.clicked.connect(lambda: self.pasteSymbol(symbol))
+        action.setFixedSize(30, 30)
+        return action
 
     def setMainStatusbar(self):
         """메인 스테이터스 바 생성하는 함수"""
@@ -967,8 +919,8 @@ class MainApp(QMainWindow):
         dialog = AdvSettingsDialog(self)
 
     # def psTISsettingsDialogShow(self):
-        """대사별 포토샵 문자 설정 창 생성 함수"""
-        dialog = TextItemStyleDialog(self)
+    #     """대사별 포토샵 문자 설정 창 생성 함수"""
+    #     dialog = TextItemStyleDialog(self)
 
     def checkPhotoshop(self) -> bool:
         """지정된 프로그램이 포토샵인지 확인하는 함수"""
@@ -1226,6 +1178,12 @@ class MainApp(QMainWindow):
         """매크로 설정 창 생성 함수"""
         dialog = MacroSetDialog(self)
 
+    def setSymbolDialog(self):
+        """특수문자 설정 창 생성 함수"""
+        dialog = SymbolSetDialog(self)
+        self.setSymbolToolbar()
+        self.setSymbolMenubar()
+
     def macroStartByToolbar(self):
         """툴바에서 매크로 모드를 켤 때 거쳐가는 함수"""
         self.macroMode.toggle()
@@ -1425,66 +1383,10 @@ class MainApp(QMainWindow):
             self.recordChange()
             self.statusbarmain.showMessage('변환 완료', 5000)
 
-    def pasteThreePoint(self):
-        """줄임표를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('…')
-        self.statusbarmain.showMessage("'…'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteLongHLine(self):
-        """줄표(가로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('―')
-        self.statusbarmain.showMessage("'―'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteLongVLine(self):
-        """줄표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('│')
-        self.statusbarmain.showMessage("'│'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteLittleJPquotaions(self):
-        """홑낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('「」')
-        self.statusbarmain.showMessage("'「」'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteBigJPquotaions(self):
-        """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('『』')
-        self.statusbarmain.showMessage("'『』'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteEmpHeart(self):
-        """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('♡')
-        self.statusbarmain.showMessage("'♡'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteFullHeart(self):
-        """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('♥')
-        self.statusbarmain.showMessage("'♥'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def paste8Note(self):
-        """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('♪')
-        self.statusbarmain.showMessage("'♪'를 복사했습니다.", 5000)
+    def pasteSymbol(self, symbol):
+        """특수문자를 복사 및 자동 모드 시 붙여넣는 함수"""
+        copy(symbol)
+        self.statusbarmain.showMessage(f"'{symbol}'를 복사했습니다.", 5000)
         if self.autoStartAction.isChecked():
             self.windowFocus()
             hotkey('ctrl', 'v')
@@ -1669,5 +1571,6 @@ class MainApp(QMainWindow):
         self.settings.setValue("State", self.saveState())
         self.settings.setValue("AdvSettings", self.advSettingsList)
         self.settings.setValue("MacroList", self.macroList)
+        self.settings.setValue("SymbolList", self.symbolList)
         self.settings.setValue("TextItemsSettings", self.textItemStyleList)
         self.settings.setValue("CurrentTextItem", self.currentTextItemStyle)
