@@ -1,3 +1,4 @@
+import time
 from multiprocessing import Process
 from os.path import basename, exists
 from re import match
@@ -5,7 +6,7 @@ from re import match
 import photoshop.api as ps
 import pythoncom
 import win32com.client
-from clipboard import copy
+from clipboard import copy, paste
 from psutil import Process as Prcss
 from pyautogui import getAllTitles, getWindowsWithTitle, hotkey
 from PyQt5.QtCore import QSettings, Qt, pyqtSlot
@@ -20,7 +21,7 @@ from win32process import GetWindowThreadProcessId
 from SB2T.dialog import (AdvSettingsDialog, MacroSetDialog, TextChangeDialog,
                          TextFindDialog, TextItemStyleDialog)
 from SB2T.obj import MacroStartwithProcess, TextLine
-from SB2T.thread import CheckBmkThread, StartPsThread
+from SB2T.thread import CheckBmkThread, DetectCtrlV, StartPsThread
 
 
 # =====================================메인 시작===================================
@@ -142,6 +143,7 @@ class MainApp(QMainWindow):
         self.recordOfBtn = []
         self.recordOfBtnIndex = -1
         self.psThreadfunc = StartPsThread(self)
+        self.ctrlVThread = DetectCtrlV(self)
         self.bookmark = -1
         self.bmkThread = CheckBmkThread(self)
 
@@ -216,16 +218,22 @@ class MainApp(QMainWindow):
         self.startMode.setShortcut('F5')
         self.startMode.setDisabled(True)
 
+        self.ctrlVMode = QAction('Ctrl+V 모드(&V)', self)
+        self.ctrlVMode.setCheckable(True)
+        self.ctrlVMode.triggered.connect(self.ctrlVStartByMenu)
+        self.ctrlVMode.setShortcut('F6')
+        self.ctrlVMode.setDisabled(True)
+
         self.psMode = QAction('포토샵 모드(&P)', self)
         self.psMode.setCheckable(True)
         self.psMode.triggered.connect(self.psAutoStartByMenu)
-        self.psMode.setShortcut('F6')
+        self.psMode.setShortcut('F7')
         self.psMode.setDisabled(True)
 
         self.macroMode = QAction('매크로 모드(&M)', self)
         self.macroMode.setCheckable(True)
         self.macroMode.triggered.connect(self.macroStartByMenu)
-        self.macroMode.setShortcut('F7')
+        self.macroMode.setShortcut('F8')
 
         self.resetRecord = QAction('기록 초기화(&Q)', self)
         self.resetRecord.triggered.connect(self.resetAllRecord)
@@ -350,6 +358,7 @@ class MainApp(QMainWindow):
 
         self.modeMenu = self.menubar.addMenu('모드(&M)')
         self.modeMenu.addAction(self.startMode)
+        self.modeMenu.addAction(self.ctrlVMode)
         self.modeMenu.addAction(self.psMode)
         self.modeMenu.addAction(self.macroMode)
 
@@ -423,17 +432,25 @@ class MainApp(QMainWindow):
         self.autoStartAction.setCheckable(True)
         self.autoStartAction.setDisabled(True)
 
+        self.ctrlVStartAction = QAction(
+            QIcon(""), 'CtrlVMode', self)
+        self.ctrlVStartAction.setToolTip(
+            'Ctrl+V 모드 ( F6 )\nCtrl+V로 붙여넣기 시 자동으로\n다음 문장이 복사되는 모드입니다.')
+        self.ctrlVStartAction.triggered.connect(self.ctrlVStartByToolbar)
+        self.ctrlVStartAction.setCheckable(True)
+        self.ctrlVStartAction.setDisabled(True)
+
         self.psAutoStartAction = QAction(
             QIcon("icons/psmode.png"), 'PSMode', self)
         self.psAutoStartAction.setToolTip(
-            '포토샵 모드 (F6)\n포토샵 전용 붙여넣기 모드로,\n텍스트 레이어 생성 시 자동으로 붙여넣는 모드입니다.')
+            '포토샵 모드 (F7)\n포토샵 전용 붙여넣기 모드로,\n텍스트 레이어 생성 시 자동으로 붙여넣는 모드입니다.')
         self.psAutoStartAction.triggered.connect(self.psAutoStartByToolbar)
         self.psAutoStartAction.setCheckable(True)
         self.psAutoStartAction.setDisabled(True)
 
         self.macroStartAction = QAction(
             QIcon('icons/macromode.png'), 'Macro', self)
-        self.macroStartAction.setToolTip('매크로 모드 (F7)\n키보드 매크로 기능을 실행합니다.')
+        self.macroStartAction.setToolTip('매크로 모드 (F8)\n키보드 매크로 기능을 실행합니다.')
         self.macroStartAction.triggered.connect(self.macroStartByToolbar)
         self.macroStartAction.setCheckable(True)
 
@@ -539,6 +556,7 @@ class MainApp(QMainWindow):
         self.toolbar.addAction(self.setMacroAction)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.autoStartAction)
+        self.toolbar.addAction(self.ctrlVStartAction)
         self.toolbar.addAction(self.psAutoStartAction)
         self.toolbar.addAction(self.macroStartAction)
         self.toolbar.addSeparator()
@@ -703,6 +721,8 @@ class MainApp(QMainWindow):
         self.filepath = path
         self.psAutoStartAction.setDisabled(True)
         self.psMode.setDisabled(True)
+        self.ctrlVStartAction.setDisabled(True)
+        self.ctrlVMode.setDisabled(True)
         # self.psTISsettings.setDisabled(True)
         # self.psTISsettingsAction.setDisabled(True)
         self.autoStartAction.setDisabled(True)
@@ -835,6 +855,8 @@ class MainApp(QMainWindow):
                 # self.psTISsettingsAction.setDisabled(True)
                 self.psAutoStartAction.setDisabled(True)
                 self.psMode.setDisabled(True)
+            self.ctrlVStartAction.setEnabled(True)
+            self.ctrlVMode.setEnabled(True)
             self.checkBookmark()
         else:   # 버튼이 하나도 없을 때는 세팅 ㄴㄴ
             self.statusbarmain.showMessage("빈 텍스트입니다.")
@@ -1069,6 +1091,52 @@ class MainApp(QMainWindow):
                 # self.psTISsettingsAction.setEnabled(True)
             self.statusbarmain.showMessage("자동 모드 Off", 5000)
 
+    def ctrlVStartByMenu(self):
+        """메뉴에서 Ctrl+V 모드를 켤 때 거쳐가는 함수"""
+        self.ctrlVStartAction.toggle()
+        self.ctrlVStart()
+
+    def ctrlVStartByToolbar(self):
+        """툴바에서 Ctrl+V 모드를 켤 때 거쳐가는 함수"""
+        self.ctrlVMode.toggle()
+        self.ctrlVStart()
+
+    def ctrlVStart(self):
+        """Ctrl+V 모드 시작 함수"""
+        if self.ctrlVThread.isRunning():
+            self.ctrlVThread.disconnect()   # 스레드 체크
+            self.ctrlVThread.terminate()
+        if self.ctrlVStartAction.isChecked():
+            self.psAutoStartAction.setDisabled(True)
+            self.psMode.setDisabled(True)
+            self.statusbarmain.showMessage("Ctrl+V 모드 On")
+            self.startCtrlVMode()
+        else:
+            self.psAutoStartAction.setEnabled(True)
+            self.psMode.setEnabled(True)
+            self.statusbarmain.showMessage("Ctrl+V 모드 Off", 5000)
+
+    def startCtrlVMode(self):
+        """Ctrl+V 모드 스레드 시작 함수"""
+        if self.ctrlVThread.isRunning():
+            self.ctrlVThread.disconnect()  # 스레드 체크
+            self.ctrlVThread.terminate()
+        self.ctrlVThread = DetectCtrlV(self)  # 스레드 클래스 생성
+        self.ctrlVThread.start()
+        self.ctrlVThread.detectCtrlVSignal.connect(
+            self.copyNextLineAtCtrlVMode)
+
+    @pyqtSlot(bool)
+    def copyNextLineAtCtrlVMode(self, isValid):
+        """Ctrl+V 모드 붙여넣기 실행 함수"""
+        if not isValid or len(self.lineCnt) == 0:
+            return
+        currentCopiedText = self.btn[self.lineCnt[0]].whatTxtForCopy()
+        if currentCopiedText == paste():
+            self.btn[self.lineCnt[0]].setTraceTextLine()
+            time.sleep(0.1)
+            self.nextLineCopy()
+
     def psAutoStartByMenu(self):
         """메뉴에서 포토샵 모드를 켤 때 거쳐가는 함수"""
         self.psAutoStartAction.toggle()
@@ -1086,15 +1154,18 @@ class MainApp(QMainWindow):
         if self.psAutoStartAction.isChecked():
             self.setProgramForPasteAction.setDisabled(True)
             self.setProgram.setDisabled(True)
+            self.ctrlVStartAction.setDisabled(True)
+            self.ctrlVMode.setDisabled(True)
             # self.psTISsettings.setDisabled(True)
             # self.psTISsettingsAction.setDisabled(True)
             self.statusbarmain.showMessage("포토샵 모드 On")
-
             self.psAutoThreadStart()
         else:
             if not self.autoStartAction.isChecked():
                 self.setProgramForPasteAction.setEnabled(True)
                 self.setProgram.setEnabled(True)
+                self.ctrlVStartAction.setEnabled(True)
+                self.ctrlVMode.setEnabled(True)
                 # self.psTISsettings.setEnabled(True)
                 # self.psTISsettingsAction.setEnabled(True)
             self.statusbarmain.showMessage("포토샵 모드 Off", 5000)
@@ -1138,10 +1209,15 @@ class MainApp(QMainWindow):
     def nextLineCopy(self):
         """다음 텍스트 라인 복사하기 (기본 버튼 모드만 적용)"""
         temp = self.nextNumOfBtnMode(self.lineCnt[-1] + 1)
-        if temp == -1:  # 마지막 텍스트 라인 복붙했을 때 자동으로 PS 모드 종료
-            self.psAutoStartAction.toggle()
-            self.psMode.toggle()
-            self.psAutoStart()
+        if temp == -1:  # 마지막 텍스트 라인 복붙했을 때 자동으로 PS, Ctrl+V 모드 종료
+            if self.psAutoStartAction.isChecked():
+                self.psAutoStartAction.toggle()
+                self.psMode.toggle()
+                self.psAutoStart()
+            if self.ctrlVStartAction.isChecked():
+                self.ctrlVStartAction.toggle()
+                self.ctrlVMode.toggle()
+                self.ctrlVStart()
             self.statusbarmain.showMessage("마지막 텍스트를 붙여넣었습니다!", 5000)
         else:
             self.btn[temp].copyText()
@@ -1422,6 +1498,9 @@ class MainApp(QMainWindow):
         if reply == QMessageBox.Yes:
             if self.psThreadfunc.isRunning():
                 self.psThreadfunc.terminate()
+            if self.ctrlVThread.isRunning():
+                self.ctrlVThread.disconnect()
+                self.ctrlVThread.terminate()
             if self.psAutoStartAction.isChecked():
                 self.psAutoStartAction.toggle()
                 self.psMode.toggle()
@@ -1430,6 +1509,8 @@ class MainApp(QMainWindow):
                 self.startMode.toggle()
             self.psAutoStartAction.setDisabled(True)
             self.psMode.setDisabled(True)
+            self.ctrlVStartAction.setDisabled(True)
+            self.ctrlVMode.setDisabled(True)
             # self.psTISsettings.setDisabled(True)
             # self.psTISsettingsAction.setDisabled(True)
             self.autoStartAction.setDisabled(True)
@@ -1550,6 +1631,11 @@ class MainApp(QMainWindow):
         if self.psThreadfunc.isRunning():  # PS 모드 스레드 체크
             self.psThreadfunc.terminate()
             self.psThreadfunc.wait()
+
+        if self.ctrlVThread.isRunning():
+            self.ctrlVThread.disconnect()  # Ctrl+V 모드 스레드 체크
+            self.ctrlVThread.terminate()
+            self.ctrlVThread.wait()
 
         if self.bmkThread.isRunning():  # 북마크 스레드 체크
             self.bmkThread.terminate()
