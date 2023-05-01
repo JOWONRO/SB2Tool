@@ -428,7 +428,7 @@ class MainApp(QMainWindow):
         self.autoStartAction.setDisabled(True)
 
         self.ctrlVStartAction = QAction(
-            QIcon(""), 'CtrlVMode', self)
+            QIcon("icons/ctrlv.png"), 'CtrlVMode', self)
         self.ctrlVStartAction.setToolTip(
             'Ctrl+V 모드 ( F6 )\nCtrl+V로 붙여넣기 시 자동으로\n다음 문장이 복사되는 모드입니다.')
         self.ctrlVStartAction.triggered.connect(self.ctrlVStartByToolbar)
