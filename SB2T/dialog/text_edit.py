@@ -1,14 +1,8 @@
-from PyQt5.QtWidgets import (
-    QDialog,
-    QPushButton,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLineEdit,
-)
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt
-
 from pyautogui import position
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QLineEdit, QPushButton,
+                             QVBoxLayout)
 
 
 class TextEditDialog(QDialog):
@@ -49,4 +43,3 @@ class TextEditDialog(QDialog):
             self.parent.setLine()
             self.parent.parent.recordChange()
         self.close()
-

@@ -1,18 +1,12 @@
 # import photoshop.api as ps
-from os import remove, path
-
-from PyQt5.QtWidgets import (
-    QMessageBox,
-    QPushButton,
-    QMenu,
-    QAction
-)
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt, QSize
-
-from pyautogui import hotkey
-from clipboard import copy, paste
 import time
+from os import path, remove
+
+from clipboard import copy, paste
+from pyautogui import hotkey
+from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QAction, QMenu, QMessageBox, QPushButton
 
 from SB2T.dialog import TextEditDialog
 
@@ -33,12 +27,12 @@ class TextLine(QPushButton):
             self.act_connection = 1
         else:
             self.act_connection = 0
-        self.attribute = 'none' # 대화 = conversation, 
-                                # 생각 = think,
-                                # 독백 = narration,
-                                # 강조 = emphasis,
-                                # 효과 = effect,
-                                # 배경 = background
+        self.attribute = 'none'  # 대화 = conversation,
+        # 생각 = think,
+        # 독백 = narration,
+        # 강조 = emphasis,
+        # 효과 = effect,
+        # 배경 = background
         self.clicked.connect(self.copyPasteEvent)
         self.setIconSize(QSize(24, 24))
         self.setLine()
@@ -166,7 +160,7 @@ class TextLine(QPushButton):
             chk_bg_color, background_color, border_left, margin, padding, bmk))
 
     def makeStyleStr(
-    self, chk_bg_color, background_color, border_left, margin, padding, bmk) -> str:
+            self, chk_bg_color, background_color, border_left, margin, padding, bmk) -> str:
         """설정된 속성을 스타일 텍스트에 적용시켜 리턴하는 함수"""
         if self.mode:
             return (
@@ -224,31 +218,39 @@ class TextLine(QPushButton):
         self.chgToBtnAction = QAction('주석 해제(&C)')
         self.chgToBtnAction.triggered.connect(self.changeMode)
         self.disconnectAction = QAction('연결 비활성화(&A)')
-        self.disconnectAction.triggered.connect(lambda: self.setActiveConnection(False))
+        self.disconnectAction.triggered.connect(
+            lambda: self.setActiveConnection(False))
         self.connectAction = QAction('연결 활성화(&A)')
-        self.connectAction.triggered.connect(lambda: self.setActiveConnection(True))
+        self.connectAction.triggered.connect(
+            lambda: self.setActiveConnection(True))
         self.delBmkAction = QAction('책갈피 삭제(&B)')
         self.delBmkAction.triggered.connect(lambda: self.setBookmark(False))
         self.createBmkAction = QAction('책갈피 생성(&B)')
         self.createBmkAction.triggered.connect(lambda: self.setBookmark(True))
         self.con = QAction('대화(&1)')
         self.con.setCheckable(True)
-        self.con.triggered.connect(lambda: self.changeAttribute('대화', self.con))
+        self.con.triggered.connect(
+            lambda: self.changeAttribute('대화', self.con))
         self.emp = QAction('강조(&2)')
         self.emp.setCheckable(True)
-        self.emp.triggered.connect(lambda: self.changeAttribute('강조', self.emp))
+        self.emp.triggered.connect(
+            lambda: self.changeAttribute('강조', self.emp))
         self.nar = QAction('독백(&3)')
         self.nar.setCheckable(True)
-        self.nar.triggered.connect(lambda: self.changeAttribute('독백', self.nar))
+        self.nar.triggered.connect(
+            lambda: self.changeAttribute('독백', self.nar))
         self.thk = QAction('생각(&4)')
         self.thk.setCheckable(True)
-        self.thk.triggered.connect(lambda: self.changeAttribute('생각', self.thk))
+        self.thk.triggered.connect(
+            lambda: self.changeAttribute('생각', self.thk))
         self.bkg = QAction('배경(&5)')
         self.bkg.setCheckable(True)
-        self.bkg.triggered.connect(lambda: self.changeAttribute('배경', self.bkg))
+        self.bkg.triggered.connect(
+            lambda: self.changeAttribute('배경', self.bkg))
         self.eff = QAction('효과(&6)')
         self.eff.setCheckable(True)
-        self.eff.triggered.connect(lambda: self.changeAttribute('효과', self.eff))
+        self.eff.triggered.connect(
+            lambda: self.changeAttribute('효과', self.eff))
 
         self.tag_menu = QMenu('대사 태그 변경(&T)', self)
         self.tag_menu.addAction(self.con)
@@ -298,7 +300,7 @@ class TextLine(QPushButton):
             self.bkg.setChecked(True)
         elif self.attribute == 'effect':
             self.eff.setChecked(True)
-        
+
         pos = self.mapToGlobal(pos)
         menu.move(pos)
         menu.show()
@@ -354,7 +356,7 @@ class TextLine(QPushButton):
             self.parent.btn[i].act_connection = boolean
             self.parent.btn[i].setLine()
             if self.parent.btn[i].connected_mode == 2:
-                break;
+                break
             i += 1
 
     def mouseDoubleClickEvent(self, a0):
@@ -395,7 +397,7 @@ class TextLine(QPushButton):
         if self.parent.exceptSQuotaion:   # 작은 따옴표 인식하여 괄호만 빼고 복사
             if temptxt[0] == "'" and temptxt[len(temptxt) - 1] == "'":
                 temptxt = temptxt[1:len(temptxt) - 1]
-        
+
         return temptxt
 
     def copyOneLine(self):
@@ -438,13 +440,19 @@ class TextLine(QPushButton):
     def autoScroll(self, num):
         """텍스트 클릭, 혹은 텍스트 선택 변경 시 보기 편하게 자동으로 스크롤 해주는 함수"""
         if (num > 0 and num < 4) or (num >= len(self.parent.btn) - 4 and num < len(self.parent.btn) - 1):
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num - 1], 0, 0)
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num + 1], 0, 0)
+            self.parent.scroll.ensureWidgetVisible(
+                self.parent.btn[num - 1], 0, 0)
+            self.parent.scroll.ensureWidgetVisible(
+                self.parent.btn[num + 1], 0, 0)
         elif num >= 4 and num < len(self.parent.btn) - 4:
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num - 4], 0, 0)
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num + 4], 0, 0)
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num - 1], 0, 0)
-            self.parent.scroll.ensureWidgetVisible(self.parent.btn[num + 1], 0, 0)
+            self.parent.scroll.ensureWidgetVisible(
+                self.parent.btn[num - 4], 0, 0)
+            self.parent.scroll.ensureWidgetVisible(
+                self.parent.btn[num + 4], 0, 0)
+            self.parent.scroll.ensureWidgetVisible(
+                self.parent.btn[num - 1], 0, 0)
+            self.parent.scroll.ensureWidgetVisible(
+                self.parent.btn[num + 1], 0, 0)
         self.parent.scroll.ensureWidgetVisible(self.parent.btn[num], 0, 50)
 
     def cleanToggle(self):
@@ -460,7 +468,8 @@ class TextLine(QPushButton):
                                 self.parent.btn[i].toggle()
                         else:
                             self.parent.btn[i].toggle()
-        self.parent.hbar.setValue(self.parent.hbar.minimum())  # 이렇게 좌로 스크롤 안 해주면 수평 스크롤이 자꾸 중앙으로 간다
+        # 이렇게 좌로 스크롤 안 해주면 수평 스크롤이 자꾸 중앙으로 간다
+        self.parent.hbar.setValue(self.parent.hbar.minimum())
 
     def setUncheckedAfterPaste(self):
         """복사 후 버튼 체크 풀어주는 함수"""
@@ -551,7 +560,7 @@ class TextLine(QPushButton):
         # layer.textItem.width = 200
         # layer.textItem.position = [10, 10]
 
-    def setTraceTextLine(self): 
+    def setTraceTextLine(self):
         """텍스트 라인 색상 바꾸는 함수 (흔적 남기기)"""
         if len(self.parent.lineCntBack) != 0:
             for i in self.parent.lineCntBack:
@@ -566,13 +575,15 @@ class TextLine(QPushButton):
 
         self.parent.lineCntBack = self.parent.lineCnt[:]
 
-    def copyPasteEvent(self, parent):
+    def copyPasteEvent(self):
         """텍스트 라인 클릭 시 실행되는 함수\n
         기본 모드 시 복사만, 자동 모드 시 붙여넣기까지"""
         if self.mode:
             if self.parent.autoStartAction.isChecked():  # 자동 모드일 때
                 self.copyText()
                 self.pasteText()
+                if self.parent.ctrlVStartAction.isChecked():
+                    time.sleep(0.1)
+                    self.parent.nextLineCopy()  # Ctrl+V 모드가 같이 적용된 경우
             else:  # 기본 모드일 때. 클릭 시 복사만 진행
                 self.copyText()
-

@@ -1,44 +1,27 @@
-import win32com.client
-import photoshop.api as ps
-import pythoncom
-from os.path import basename, exists
-
-from PyQt5.QtWidgets import (
-    QInputDialog,
-    QMessageBox,
-    QFileDialog,
-    QDialog,
-    QWidget,
-    QPushButton,
-    QToolBar,
-    QMainWindow,
-    QAction,
-    QLabel,
-    QVBoxLayout,
-    QStatusBar,
-    QFontDialog,
-    QScrollArea
-)
-from PyQt5.QtGui import QIcon, QFont
-from PyQt5.QtCore import Qt, QSettings, pyqtSlot
-
-from pyautogui import hotkey, getWindowsWithTitle, getAllTitles
-from clipboard import copy
-from win32gui import SetForegroundWindow
-from win32process import GetWindowThreadProcessId
-from psutil import Process as Prcss
+import time
 from multiprocessing import Process
+from os.path import basename, exists
 from re import match
 
-from SB2T.obj import TextLine, MacroStartwithProcess
-from SB2T.dialog import (
-    AdvSettingsDialog,
-    TextFindDialog,
-    TextChangeDialog,
-    MacroSetDialog,
-    TextItemStyleDialog
-)
-from SB2T.thread import StartPsThread, CheckBmkThread
+import photoshop.api as ps
+import pythoncom
+import win32com.client
+from clipboard import copy, paste
+from psutil import Process as Prcss
+from pyautogui import getAllTitles, getWindowsWithTitle, hotkey
+from PyQt5.QtCore import QSettings, Qt, pyqtSlot
+from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtWidgets import (QAction, QDialog, QFileDialog, QFontDialog,
+                             QInputDialog, QLabel, QMainWindow, QMessageBox,
+                             QPushButton, QScrollArea, QStatusBar, QToolBar,
+                             QVBoxLayout, QWidget)
+from win32gui import SetForegroundWindow
+from win32process import GetWindowThreadProcessId
+
+from SB2T.dialog import (AdvSettingsDialog, MacroSetDialog, SymbolSetDialog,
+                         TextChangeDialog, TextFindDialog, TextItemStyleDialog)
+from SB2T.obj import MacroStartwithProcess, TextLine
+from SB2T.thread import CheckBmkThread, DetectCtrlV, StartPsThread
 
 
 # =====================================메인 시작===================================
@@ -48,15 +31,17 @@ class MainApp(QMainWindow):
     def __init__(self):
         super().__init__(None, Qt.WindowStaysOnTopHint)
         self.settings = QSettings("RingNebula", "SB2Tool")
-        self.version = 'Beta3.3'
+        self.version = 'Beta4.0'
         self.font = QFont()
         self.toolbar = QToolBar("기본 툴바")
         self.addToolBar(Qt.LeftToolBarArea, self.toolbar)
-        self.toolbar.setObjectName("DefaultToolbar")  # 이거 안 하면 설정 저장에서 오류 뜸
+        # 이거 안 하면 설정 저장에서 오류 뜸
+        self.toolbar.setObjectName("DefaultToolbar")
         self.toolbarSym = QToolBar('기호 툴바')
         self.addToolBar(Qt.BottomToolBarArea, self.toolbarSym)
         self.toolbarSym.setObjectName('SymbolToolbar')
         self.macroList = []
+        self.symbolList = []
         self.textItemStyleList = []
         self.currentTextItemStyle = None
         self.notFirstStart = True
@@ -78,12 +63,14 @@ class MainApp(QMainWindow):
     def checkLastSettings(self):
         """마지막으로 저장된 설정을 불러오는 함수"""
         try:
-            self.notFirstStart = self.settings.value("NotFirstStart", False, bool)
+            self.notFirstStart = self.settings.value(
+                "NotFirstStart", False, bool)
         except:
             self.notFirstStart = False
         if not self.notFirstStart:  # 초기화
             self.advSettingsList = [1, 0, 0, 0, 0, 0, 1, 1, 1]
             self.macroList = []
+            self.symbolList = ['…', '―', '│', '「」', '『』', '♡', '♥', '♪']
             self.resize(291, 618)
             self.notFirstStart = True
             self.textItemStyleList = []
@@ -99,17 +86,30 @@ class MainApp(QMainWindow):
             try:
                 self.macroList = self.settings.value("MacroList", [], str)
             except Exception as e:
-                QMessageBox.warning(self, "오류", "매크로 설정을 불러오지 못했습니다.\n" + str(e))
+                QMessageBox.warning(
+                    self, "오류", "매크로 설정을 불러오지 못했습니다.\n" + str(e))
                 self.macroList = []
             try:
-                self.textItemStyleList = self.settings.value("TextItemsSettings", [])
-                self.currentTextItemStyle = self.settings.value("CurrentTextItem")
+                self.symbolList = self.settings.value("SymbolList", [], str)
             except Exception as e:
-                QMessageBox.warning(self, "오류", "대사별 문자 설정을 불러오지 못했습니다.\n" + str(e))
+                QMessageBox.warning(
+                    self, "오류", "특수기호 설정을 불러오지 못했습니다.\n" + str(e))
+                self.symbolList = ['…', '―', '│', '「」', '『』', '♡', '♥', '♪']
+            try:
+                self.textItemStyleList = []
+                self.currentTextItemStyle = None
+                # self.textItemStyleList = self.settings.value(
+                #     "TextItemsSettings", [])
+                # self.currentTextItemStyle = self.settings.value(
+                #     "CurrentTextItem")
+            except Exception as e:
+                QMessageBox.warning(
+                    self, "오류", "대사별 문자 설정을 불러오지 못했습니다.\n" + str(e))
                 self.textItemStyleList = []
                 self.currentTextItemStyle = None
             try:
-                self.advSettingsList = self.settings.value("AdvSettings", [], int)
+                self.advSettingsList = self.settings.value(
+                    "AdvSettings", [], int)
                 self.exceptbrackets = self.advSettingsList[0]
                 self.exceptCurlybrackets = self.advSettingsList[1]
                 self.exceptSquarebrackets = self.advSettingsList[2]
@@ -120,7 +120,8 @@ class MainApp(QMainWindow):
                 self.commentWithP = self.advSettingsList[7]
                 self.onTopDefault = self.advSettingsList[8]
             except Exception as e:
-                QMessageBox.warning(self, "오류", "고급 설정을 불러오지 못했습니다.\n" + str(e))
+                QMessageBox.warning(
+                    self, "오류", "고급 설정을 불러오지 못했습니다.\n" + str(e))
                 self.advSettingsList = [1, 0, 0, 0, 0, 0, 1, 1, 1]
             try:
                 self.font = self.settings.value("LastFont")
@@ -150,12 +151,15 @@ class MainApp(QMainWindow):
         self.recordOfBtn = []
         self.recordOfBtnIndex = -1
         self.psThreadfunc = StartPsThread(self)
+        self.ctrlVThread = DetectCtrlV(self)
         self.bookmark = -1
         self.bmkThread = CheckBmkThread(self)
 
         # ================================UI================================
         self.setMainMenubar()
+        self.setSymbolMenubar()
         self.setMainToolbar()
+        self.setSymbolToolbar()
         self.setMainStatusbar()
 
         self.setWindowTitle('식붕이툴 ' + self.version)
@@ -171,7 +175,8 @@ class MainApp(QMainWindow):
         self.openFile.setShortcut('Ctrl+O')
 
         self.saveFile = QAction('저장(&S)', self)
-        self.saveFile.triggered.connect(lambda: self.saveTextFile(self.filepath))
+        self.saveFile.triggered.connect(
+            lambda: self.saveTextFile(self.filepath))
         self.saveFile.setShortcut('Ctrl+S')
         self.saveFile.setDisabled(True)
 
@@ -203,6 +208,10 @@ class MainApp(QMainWindow):
         self.setMacro.triggered.connect(self.setMacroDialog)
         self.setMacro.setShortcut('Ctrl+M')
 
+        self.setSymbol = QAction('특수문자 설정(&S)', self)
+        self.setSymbol.triggered.connect(self.setSymbolDialog)
+        self.setSymbol.setShortcut('Ctrl+Y')
+
         self.changeFont = QAction('글꼴(&F)', self)
         self.changeFont.triggered.connect(self.showFontDialog)
         self.changeFont.setDisabled(True)
@@ -211,11 +220,11 @@ class MainApp(QMainWindow):
         self.advSettings.triggered.connect(self.advSettingsDialogShow)
         self.advSettings.setShortcut('F2')
 
-        self.psTISsettings = QAction('대사별 문자 설정(&B)', self)
-        self.psTISsettings.setIcon(QIcon('icons/setpsmode.png'))
-        self.psTISsettings.triggered.connect(self.psTISsettingsDialogShow)
-        self.psTISsettings.setShortcut('Ctrl+T')
-        self.psTISsettings.setDisabled(True)
+        # self.psTISsettings = QAction('대사별 문자 설정(&B)', self)
+        # self.psTISsettings.setIcon(QIcon('icons/setpsmode.png'))
+        # self.psTISsettings.triggered.connect(self.psTISsettingsDialogShow)
+        # self.psTISsettings.setShortcut('Ctrl+T')
+        # self.psTISsettings.setDisabled(True)
 
         self.startMode = QAction('자동 모드(&S)', self)
         self.startMode.setCheckable(True)
@@ -223,16 +232,22 @@ class MainApp(QMainWindow):
         self.startMode.setShortcut('F5')
         self.startMode.setDisabled(True)
 
+        self.ctrlVMode = QAction('Ctrl+V 모드(&V)', self)
+        self.ctrlVMode.setCheckable(True)
+        self.ctrlVMode.triggered.connect(self.ctrlVStartByMenu)
+        self.ctrlVMode.setShortcut('F6')
+        self.ctrlVMode.setDisabled(True)
+
         self.psMode = QAction('포토샵 모드(&P)', self)
         self.psMode.setCheckable(True)
         self.psMode.triggered.connect(self.psAutoStartByMenu)
-        self.psMode.setShortcut('F6')
+        self.psMode.setShortcut('F7')
         self.psMode.setDisabled(True)
 
         self.macroMode = QAction('매크로 모드(&M)', self)
         self.macroMode.setCheckable(True)
         self.macroMode.triggered.connect(self.macroStartByMenu)
-        self.macroMode.setShortcut('F7')
+        self.macroMode.setShortcut('F8')
 
         self.resetRecord = QAction('기록 초기화(&Q)', self)
         self.resetRecord.triggered.connect(self.resetAllRecord)
@@ -264,12 +279,12 @@ class MainApp(QMainWindow):
         self.pasteEdit.setShortcut('S')
         self.pasteEdit.setDisabled(True)
 
-        self.linkEdit = QAction('모든 묶음 활성화(&L)')
+        self.linkEdit = QAction('모든 묶음 활성화(&L)', self)
         self.linkEdit.triggered.connect(self.setLinkAll)
         self.linkEdit.setShortcut('Ctrl+L')
         self.linkEdit.setDisabled(True)
 
-        self.unlinkEdit = QAction('모든 묶음 비활성화(&K)')
+        self.unlinkEdit = QAction('모든 묶음 비활성화(&K)', self)
         self.unlinkEdit.triggered.connect(self.setUnlinkAll)
         self.unlinkEdit.setShortcut('Ctrl+U')
         self.unlinkEdit.setDisabled(True)
@@ -293,39 +308,15 @@ class MainApp(QMainWindow):
         self.chgTPEdit.triggered.connect(self.changeThreePoint)
         self.chgTPEdit.setDisabled(True)
 
-        self.undoEdit = QAction('바꾸기 취소(&U)')
+        self.undoEdit = QAction('바꾸기 취소(&U)', self)
         self.undoEdit.triggered.connect(self.undoChange)
         self.undoEdit.setShortcut('Ctrl+Z')
         self.undoEdit.setDisabled(True)
 
-        self.redoEdit = QAction('바꾸기 다시 실행(&R)')
+        self.redoEdit = QAction('바꾸기 다시 실행(&R)', self)
         self.redoEdit.triggered.connect(self.redoChange)
         self.redoEdit.setShortcut('Ctrl+X')
         self.redoEdit.setDisabled(True)
-
-        self.thrpntEdit = QAction("줄임표 '…' 복사(&1)")
-        self.thrpntEdit.triggered.connect(self.pasteThreePoint)
-
-        self.hlineEdit = QAction("가로 줄표 '―' 복사(&2)")
-        self.hlineEdit.triggered.connect(self.pasteLongHLine)
-
-        self.vlineEdit = QAction("세로 줄표 '│' 복사(&3)")
-        self.vlineEdit.triggered.connect(self.pasteLongVLine)
-
-        self.litqtnEdit = QAction("홑낫표 '「」' 복사(&4)")
-        self.litqtnEdit.triggered.connect(self.pasteLittleJPquotaions)
-
-        self.bigqtnEdit = QAction("겹낫표 '『』' 복사(&5)")
-        self.bigqtnEdit.triggered.connect(self.pasteBigJPquotaions)
-
-        self.empHrtEdit = QAction("겹낫표 '♡' 복사(&6)")
-        self.empHrtEdit.triggered.connect(self.pasteEmpHeart)
-
-        self.fullHrtEdit = QAction("겹낫표 '♥' 복사(&7)")
-        self.fullHrtEdit.triggered.connect(self.pasteFullHeart)
-
-        self.note8Edit = QAction("겹낫표 '♪' 복사(&8)")
-        self.note8Edit.triggered.connect(self.paste8Note)
 
         self.tutorial = QAction('매뉴얼(&M)', self)
         self.tutorial.setShortcut('F1')
@@ -350,13 +341,15 @@ class MainApp(QMainWindow):
         self.configMenu = self.menubar.addMenu('설정(&S)')
         self.configMenu.addAction(self.setProgram)
         self.configMenu.addAction(self.setMacro)
-        self.configMenu.addAction(self.psTISsettings)
+        self.configMenu.addAction(self.setSymbol)
+        # self.configMenu.addAction(self.psTISsettings)
         self.configMenu.addSeparator()
         self.configMenu.addAction(self.changeFont)
         self.configMenu.addAction(self.advSettings)
 
         self.modeMenu = self.menubar.addMenu('모드(&M)')
         self.modeMenu.addAction(self.startMode)
+        self.modeMenu.addAction(self.ctrlVMode)
         self.modeMenu.addAction(self.psMode)
         self.modeMenu.addAction(self.macroMode)
 
@@ -381,22 +374,27 @@ class MainApp(QMainWindow):
         self.editMenu.addSeparator()
 
         self.symbolMenu = self.editMenu.addMenu('특수 문자 복사(&P)')
-        self.symbolMenu.addAction(self.thrpntEdit)
-        self.symbolMenu.addAction(self.hlineEdit)
-        self.symbolMenu.addAction(self.vlineEdit)
-        self.symbolMenu.addAction(self.litqtnEdit)
-        self.symbolMenu.addAction(self.bigqtnEdit)
-        self.symbolMenu.addAction(self.empHrtEdit)
-        self.symbolMenu.addAction(self.fullHrtEdit)
-        self.symbolMenu.addAction(self.note8Edit)
 
         self.helpMenu = self.menubar.addMenu('도움말(&H)')
         self.helpMenu.addAction(self.tutorial)
         self.helpMenu.addAction(self.information)
 
+    def setSymbolMenubar(self):
+        """특수문자 메뉴 생성하는 함수"""
+        self.symbolMenu.clear()
+        for symbol in self.symbolList:
+            self.symbolMenu.addAction(self.getMenuActionOfSymbol(symbol))
+
+    def getMenuActionOfSymbol(self, symbol):
+        """메뉴 액션 가져오는 함수"""
+        action = QAction(f"'{symbol}' 복사", self)
+        action.triggered.connect(lambda: self.pasteSymbol(symbol))
+        return action
+
     def setMainToolbar(self):
         """메인 툴바 생성하는 함수"""
-        self.fileOpenAction = QAction(QIcon('icons/open.png'), 'FileOpen', self)
+        self.fileOpenAction = QAction(
+            QIcon('icons/open.png'), 'FileOpen', self)
         self.fileOpenAction.setToolTip(
             '파일 열기 ( Ctrl+O )\n복사를 진행할 텍스트 파일을 불러옵니다.\n자동 모드나 포토샵 모드가 켜져 있으면 비활성화됩니다.')
         self.fileOpenAction.triggered.connect(self.showFileDialog)
@@ -405,33 +403,49 @@ class MainApp(QMainWindow):
             QIcon("icons/setpro.png"), 'ProgramSetting', self)
         self.setProgramForPasteAction.setToolTip(
             '프로그램 세팅 ( Ctrl+P )\n붙여넣기를 진행할 프로그램을 지정합니다.')
-        self.setProgramForPasteAction.triggered.connect(self.setProgramForPaste)
+        self.setProgramForPasteAction.triggered.connect(
+            self.setProgramForPaste)
 
-        self.setMacroAction = QAction(QIcon('icons/setmacro.png'), 'setMacro', self)
+        self.setMacroAction = QAction(
+            QIcon('icons/setmacro.png'), 'setMacro', self)
         self.setMacroAction.setToolTip('매크로 설정 ( Ctrl+M )\n키보드 매크로를 설정합니다.')
         self.setMacroAction.triggered.connect(self.setMacroDialog)
 
-        self.psTISsettingsAction = QAction(QIcon('icons/setpsmode.png'), 'setPSmode', self)
-        self.psTISsettingsAction.setToolTip('대사별 문자 설정 (Ctrl+T)\n포토샵 모드 전용 설정으로,\n대사 태그별로 문자 설정을 지정합니다.')
-        self.psTISsettingsAction.triggered.connect(self.psTISsettingsDialogShow)
-        self.psTISsettingsAction.setDisabled(True)
+        # self.psTISsettingsAction = QAction(
+        #     QIcon('icons/setpsmode.png'), 'setPSmode', self)
+        # self.psTISsettingsAction.setToolTip(
+        #     '대사별 문자 설정 (Ctrl+T)\n포토샵 모드 전용 설정으로,\n대사 태그별로 문자 설정을 지정합니다.')
+        # self.psTISsettingsAction.triggered.connect(
+        #     self.psTISsettingsDialogShow)
+        # self.psTISsettingsAction.setDisabled(True)
 
-        self.autoStartAction = QAction(QIcon("icons/auto.png"), 'AutoMode', self)
+        self.autoStartAction = QAction(
+            QIcon("icons/auto.png"), 'AutoMode', self)
         self.autoStartAction.setToolTip(
             '자동 모드 ( F5 )\n원하는 텍스트를 클릭 시 자동으로\n지정된 프로그램에 붙여넣는 모드입니다.')
         self.autoStartAction.triggered.connect(self.autoStartByToolbar)
         self.autoStartAction.setCheckable(True)
         self.autoStartAction.setDisabled(True)
 
-        self.psAutoStartAction = QAction(QIcon("icons/psmode.png"), 'PSMode', self)
+        self.ctrlVStartAction = QAction(
+            QIcon("icons/ctrlv.png"), 'CtrlVMode', self)
+        self.ctrlVStartAction.setToolTip(
+            'Ctrl+V 모드 ( F6 )\nCtrl+V로 붙여넣기 시 자동으로\n다음 문장이 복사되는 모드입니다.')
+        self.ctrlVStartAction.triggered.connect(self.ctrlVStartByToolbar)
+        self.ctrlVStartAction.setCheckable(True)
+        self.ctrlVStartAction.setDisabled(True)
+
+        self.psAutoStartAction = QAction(
+            QIcon("icons/psmode.png"), 'PSMode', self)
         self.psAutoStartAction.setToolTip(
-            '포토샵 모드 (F6)\n포토샵 전용 붙여넣기 모드로,\n텍스트 레이어 생성 시 자동으로 붙여넣는 모드입니다.')
+            '포토샵 모드 (F7)\n포토샵 전용 붙여넣기 모드로,\n텍스트 레이어 생성 시 자동으로 붙여넣는 모드입니다.')
         self.psAutoStartAction.triggered.connect(self.psAutoStartByToolbar)
         self.psAutoStartAction.setCheckable(True)
         self.psAutoStartAction.setDisabled(True)
 
-        self.macroStartAction = QAction(QIcon('icons/macromode.png'), 'Macro', self)
-        self.macroStartAction.setToolTip('매크로 모드 (F7)\n키보드 매크로 기능을 실행합니다.')
+        self.macroStartAction = QAction(
+            QIcon('icons/macromode.png'), 'Macro', self)
+        self.macroStartAction.setToolTip('매크로 모드 (F8)\n키보드 매크로 기능을 실행합니다.')
         self.macroStartAction.triggered.connect(self.macroStartByToolbar)
         self.macroStartAction.setCheckable(True)
 
@@ -445,18 +459,22 @@ class MainApp(QMainWindow):
         self.linkAction.triggered.connect(self.setLinkAll)
         self.linkAction.setDisabled(True)
 
-        self.unlinkAction = QAction(QIcon('icons/unlink.png'), 'SetUnlink', self)
-        self.unlinkAction.setToolTip('모든 묶음 비활성화 ( Ctrl+U )\n모든 텍스트 묶음을 비활성화합니다.')
+        self.unlinkAction = QAction(
+            QIcon('icons/unlink.png'), 'SetUnlink', self)
+        self.unlinkAction.setToolTip(
+            '모든 묶음 비활성화 ( Ctrl+U )\n모든 텍스트 묶음을 비활성화합니다.')
         self.unlinkAction.triggered.connect(self.setUnlinkAll)
         self.unlinkAction.setDisabled(True)
 
-        self.textFindAction = QAction(QIcon('icons/find.png'), 'TextFind', self)
+        self.textFindAction = QAction(
+            QIcon('icons/find.png'), 'TextFind', self)
         self.textFindAction.setToolTip('찾기 ( Ctrl+F )\n특정 텍스트를 검색하여 복사합니다.')
         self.textFindAction.triggered.connect(self.textFind)
         self.textFindAction.setDisabled(True)
         self.textfindwindow = QDialog(self)
 
-        self.textChangeAction = QAction(QIcon('icons/change.png'), 'TextChange', self)
+        self.textChangeAction = QAction(
+            QIcon('icons/change.png'), 'TextChange', self)
         self.textChangeAction.setToolTip(
             '바꾸기 ( Ctrl+H )\n특정 텍스트를 찾아 원하는 텍스트로 바꿉니다.')
         self.textChangeAction.triggered.connect(self.textChange)
@@ -477,60 +495,13 @@ class MainApp(QMainWindow):
         self.goBookmarkAction.triggered.connect(self.goToBookmark)
         self.goBookmarkAction.setDisabled(True)
 
-        self.pasteThreePointAction = QPushButton("…", self)
-        self.pasteThreePointAction.setToolTip(
-            "줄임표 '…' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteThreePointAction.clicked.connect(self.pasteThreePoint)
-        self.pasteThreePointAction.setFixedSize(30, 30)
-
-        self.pasteLongHLineAction = QPushButton('―', self)
-        self.pasteLongHLineAction.setToolTip(
-            "가로 줄표 '―' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteLongHLineAction.clicked.connect(self.pasteLongHLine)
-        self.pasteLongHLineAction.setFixedSize(30, 30)
-
-        self.pasteLongVLineAction = QPushButton('│', self)
-        self.pasteLongVLineAction.setToolTip(
-            "세로 줄표 '│' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteLongVLineAction.clicked.connect(self.pasteLongVLine)
-        self.pasteLongVLineAction.setFixedSize(30, 30)
-
-        self.pasteBigJPquotaionsAction = QPushButton('『』', self)
-        self.pasteBigJPquotaionsAction.setToolTip(
-            "겹낫표 '『』' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteBigJPquotaionsAction.clicked.connect(self.pasteBigJPquotaions)
-        self.pasteBigJPquotaionsAction.setFixedSize(30, 30)
-
-        self.pasteLittleJPquotaionsAction = QPushButton('「」', self)
-        self.pasteLittleJPquotaionsAction.setToolTip(
-            "홑낫표 '「」' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteLittleJPquotaionsAction.clicked.connect(self.pasteLittleJPquotaions)
-        self.pasteLittleJPquotaionsAction.setFixedSize(30, 30)
-
-        self.pasteEmpHeartAction = QPushButton('♡', self)
-        self.pasteEmpHeartAction.setToolTip(
-            "빈 하트 '♡' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteEmpHeartAction.clicked.connect(self.pasteEmpHeart)
-        self.pasteEmpHeartAction.setFixedSize(30, 30)
-
-        self.pasteFullHeartAction = QPushButton('♥', self)
-        self.pasteFullHeartAction.setToolTip(
-            "꽉 찬 하트 '♥' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.pasteFullHeartAction.clicked.connect(self.pasteFullHeart)
-        self.pasteFullHeartAction.setFixedSize(30, 30)
-
-        self.paste8NoteAction = QPushButton('♪', self)
-        self.paste8NoteAction.setToolTip(
-            "8분 음표 '♪' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
-        self.paste8NoteAction.clicked.connect(self.paste8Note)
-        self.paste8NoteAction.setFixedSize(30, 30)
-
         self.toolbar.addAction(self.fileOpenAction)
         self.toolbar.addAction(self.setProgramForPasteAction)
         # self.toolbar.addAction(self.psTISsettingsAction)
         self.toolbar.addAction(self.setMacroAction)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.autoStartAction)
+        self.toolbar.addAction(self.ctrlVStartAction)
         self.toolbar.addAction(self.psAutoStartAction)
         self.toolbar.addAction(self.macroStartAction)
         self.toolbar.addSeparator()
@@ -543,14 +514,21 @@ class MainApp(QMainWindow):
         self.toolbar.addAction(self.textChangeAction)
         self.toolbar.addAction(self.threePointChangeAction)
         # self.toolbar.addSeparator()
-        self.toolbarSym.addWidget(self.pasteThreePointAction)
-        self.toolbarSym.addWidget(self.pasteLongHLineAction)
-        self.toolbarSym.addWidget(self.pasteLongVLineAction)
-        self.toolbarSym.addWidget(self.pasteLittleJPquotaionsAction)
-        self.toolbarSym.addWidget(self.pasteBigJPquotaionsAction)
-        self.toolbarSym.addWidget(self.pasteEmpHeartAction)
-        self.toolbarSym.addWidget(self.pasteFullHeartAction)
-        self.toolbarSym.addWidget(self.paste8NoteAction)
+
+    def setSymbolToolbar(self):
+        """특수문자 툴바 생성하는 함수"""
+        self.toolbarSym.clear()
+        for symbol in self.symbolList:
+            self.toolbarSym.addWidget(self.getActionOfSymbol(symbol))
+
+    def getActionOfSymbol(self, symbol):
+        """툴바 액션 가져오는 함수"""
+        action = QPushButton(symbol, self)
+        action.setToolTip(
+            f"'{symbol}' 복사\n기본 모드 시 복사만, 자동 모드 시 붙여넣습니다.")
+        action.clicked.connect(lambda: self.pasteSymbol(symbol))
+        action.setFixedSize(30, 30)
+        return action
 
     def setMainStatusbar(self):
         """메인 스테이터스 바 생성하는 함수"""
@@ -674,20 +652,20 @@ class MainApp(QMainWindow):
 
     def openTextFile(self, path):
         """텍스트 파일 열기 관련 함수"""
-        try:  # ANSI로 우선 불러오기
-            with open(path, 'r') as f:
+        try:  # UTF-8로 우선 불러오기
+            with open(path, 'r', encoding='UTF8') as f:
                 data = f.read()
                 filepath = f.name
             self.setStatusAfterOpenTxt(data, filepath)
-        except:  # ANSI가 아니면 UTF-8로 불러오기
+        except:
             try:
-                with open(path, 'r', encoding='UTF8') as f:
+                with open(path, 'r') as f:
                     data = f.read()
                     filepath = f.name
                 self.setStatusAfterOpenTxt(data, filepath)
             except Exception as e:
-                QMessageBox.warning(self, "파일 불러오기 오류", 
-                "파일을 불러오지 못했습니다.\n" + str(e))
+                QMessageBox.warning(self, "파일 불러오기 오류",
+                                    "파일을 불러오지 못했습니다.\n" + str(e))
 
     def setStatusAfterOpenTxt(self, data, path):
         """파일 불러온 뒤 임시 초기화하는 함수"""
@@ -695,8 +673,10 @@ class MainApp(QMainWindow):
         self.filepath = path
         self.psAutoStartAction.setDisabled(True)
         self.psMode.setDisabled(True)
-        self.psTISsettings.setDisabled(True)
-        self.psTISsettingsAction.setDisabled(True)
+        self.ctrlVStartAction.setDisabled(True)
+        self.ctrlVMode.setDisabled(True)
+        # self.psTISsettings.setDisabled(True)
+        # self.psTISsettingsAction.setDisabled(True)
         self.autoStartAction.setDisabled(True)
         self.startMode.setDisabled(True)
         self.textFindAction.setDisabled(True)
@@ -728,7 +708,8 @@ class MainApp(QMainWindow):
         self.saveNewFile.setDisabled(True)
         self.resetAllRecord()
 
-        self.setWindowTitle(basename(self.filepath) + ' - 식붕이툴 ' + self.version)
+        self.setWindowTitle(basename(self.filepath) +
+                            ' - 식붕이툴 ' + self.version)
         self.linetext = data.splitlines()
         self.linelen = len(self.linetext)
         self.setBtnsForText()
@@ -764,14 +745,15 @@ class MainApp(QMainWindow):
                             connect_num = 2
                     elif connect_num == 1:
                         if self.linetext[i + 1] != '':
-                            connect_num == 1
+                            connect_num = 1
                         else:
                             connect_num = 2
                 else:
                     if connect_num != -1:
                         connect_num = 2
 
-                self.btn.append(TextLine(self, linenum, mode, self.linetext[i], connect_num, head))
+                self.btn.append(TextLine(self, linenum, mode,
+                                self.linetext[i], connect_num, head))
                 backup.append(self.linetext[i])
                 try:
                     self.btn[linenum].setFont(self.font)
@@ -811,20 +793,22 @@ class MainApp(QMainWindow):
                 if self.checkPhotoshop():
                     self.psAutoStartAction.setEnabled(True)
                     self.psMode.setEnabled(True)
-                    self.psTISsettings.setEnabled(True)
-                    self.psTISsettingsAction.setEnabled(True)
+                    # self.psTISsettings.setEnabled(True)
+                    # self.psTISsettingsAction.setEnabled(True)
                 else:
-                    self.psTISsettings.setDisabled(True)
-                    self.psTISsettingsAction.setDisabled(True)
+                    # self.psTISsettings.setDisabled(True)
+                    # self.psTISsettingsAction.setDisabled(True)
                     self.psAutoStartAction.setDisabled(True)
                     self.psMode.setDisabled(True)
             else:
                 self.autoStartAction.setDisabled(True)
                 self.startMode.setDisabled(True)
-                self.psTISsettings.setDisabled(True)
-                self.psTISsettingsAction.setDisabled(True)
+                # self.psTISsettings.setDisabled(True)
+                # self.psTISsettingsAction.setDisabled(True)
                 self.psAutoStartAction.setDisabled(True)
                 self.psMode.setDisabled(True)
+            self.ctrlVStartAction.setEnabled(True)
+            self.ctrlVMode.setEnabled(True)
             self.checkBookmark()
         else:   # 버튼이 하나도 없을 때는 세팅 ㄴㄴ
             self.statusbarmain.showMessage("빈 텍스트입니다.")
@@ -849,7 +833,8 @@ class MainApp(QMainWindow):
         titles = []
         filteredTitles = []
         temp = getAllTitles()
-        temp = list(filter(lambda a: a != '', temp))  # 타이틀이 없는 정체불명인 것들이 많아서 일단 다 걸러줌
+        # 타이틀이 없는 정체불명인 것들이 많아서 일단 다 걸러줌
+        temp = list(filter(lambda a: a != '', temp))
 
         for i in temp:    # 식붕이툴을 목록에서 지우기 위한 반복문
             if '식붕이툴' in i:
@@ -865,7 +850,7 @@ class MainApp(QMainWindow):
                     break
             except Exception as e:
                 QMessageBox.warning(self, "프로그램 지정 오류",
-                "프로그램 목록 생성에 실패했습니다.\n다시 시도해 주세요.\n" + str(e))
+                                    "프로그램 목록 생성에 실패했습니다.\n다시 시도해 주세요.\n" + str(e))
         filteredTitles.append(self.selectedProgramTitle)
 
         for k in titles:  # 이 부분에서 정제된 목록이 완성
@@ -891,8 +876,8 @@ class MainApp(QMainWindow):
             self.ProgramSettingOn = False
             self.autoStartAction.setDisabled(True)
             self.startMode.setDisabled(True)
-            self.psTISsettings.setDisabled(True)
-            self.psTISsettingsAction.setDisabled(True)
+            # self.psTISsettings.setDisabled(True)
+            # self.psTISsettingsAction.setDisabled(True)
             self.psAutoStartAction.setDisabled(True)
             self.psMode.setDisabled(True)
         else:
@@ -904,8 +889,8 @@ class MainApp(QMainWindow):
             self.ProgramSettingOn = check
             if check:
                 if self.checkPhotoshop():
-                    self.psTISsettings.setEnabled(True)
-                    self.psTISsettingsAction.setEnabled(True)
+                    # self.psTISsettings.setEnabled(True)
+                    # self.psTISsettingsAction.setEnabled(True)
                     if len(self.btn) != 0:
                         self.autoStartAction.setEnabled(True)
                         self.startMode.setEnabled(True)
@@ -923,8 +908,8 @@ class MainApp(QMainWindow):
                     else:
                         self.autoStartAction.setDisabled(True)
                         self.startMode.setDisabled(True)
-                    self.psTISsettings.setDisabled(True)
-                    self.psTISsettingsAction.setDisabled(True)
+                    # self.psTISsettings.setDisabled(True)
+                    # self.psTISsettingsAction.setDisabled(True)
                     self.psAutoStartAction.setDisabled(True)
                     self.psMode.setDisabled(True)
                 self.statusbarmain.showMessage("프로그램 지정 완료", 5000)
@@ -933,9 +918,9 @@ class MainApp(QMainWindow):
         """고급 설정 창 생성 함수"""
         dialog = AdvSettingsDialog(self)
 
-    def psTISsettingsDialogShow(self):
-        """대사별 포토샵 문자 설정 창 생성 함수"""
-        dialog = TextItemStyleDialog(self)
+    # def psTISsettingsDialogShow(self):
+    #     """대사별 포토샵 문자 설정 창 생성 함수"""
+    #     dialog = TextItemStyleDialog(self)
 
     def checkPhotoshop(self) -> bool:
         """지정된 프로그램이 포토샵인지 확인하는 함수"""
@@ -944,7 +929,8 @@ class MainApp(QMainWindow):
         check = False
         test = True
         try:
-            threadid, pid = GetWindowThreadProcessId(self.selectedProgram._hWnd)
+            threadid, pid = GetWindowThreadProcessId(
+                self.selectedProgram._hWnd)
             if 'Photoshop' in Prcss(pid).name():
                 check = True
             test = False
@@ -969,24 +955,24 @@ class MainApp(QMainWindow):
             #         QMessageBox.warning(self, "포토샵 모드 오류",
             #         "레이어를 닫은 다음에\n다시 지정해 주세요.")
         except Exception as e:
-            QMessageBox.warning(self, "오류", 
-            "프로세스 체크 오류!\n" + str(e))
+            QMessageBox.warning(self, "오류",
+                                "프로세스 체크 오류!\n" + str(e))
 
         if test:
             try:
                 temp = win32com.client.GetActiveObject("Photoshop.Application")
                 check = True
             except Exception as e:
-                QMessageBox.warning(self, "오류", 
-                "포토샵 체크 오류!\n자동 모드는 가능합니다.\n" + str(e))
+                QMessageBox.warning(self, "오류",
+                                    "포토샵 체크 오류!\n자동 모드는 가능합니다.\n" + str(e))
 
         if check:
             try:
                 self.ps_app = ps.Application()
             except Exception as e:
                 check = False
-                QMessageBox.warning(self, "오류", 
-                "포토샵 연동에 실패했습니다!\n자동 모드는 가능합니다.\n" + str(e))
+                QMessageBox.warning(self, "오류",
+                                    "포토샵 연동에 실패했습니다!\n자동 모드는 가능합니다.\n" + str(e))
         pythoncom.CoUninitialize()
         return check
         # if check:
@@ -1046,20 +1032,62 @@ class MainApp(QMainWindow):
         if self.autoStartAction.isChecked():
             self.setProgramForPasteAction.setDisabled(True)
             self.setProgram.setDisabled(True)
-            self.fileOpenAction.setDisabled(True)
-            self.openFile.setDisabled(True)
-            self.psTISsettings.setDisabled(True)
-            self.psTISsettingsAction.setDisabled(True)
+            # self.psTISsettings.setDisabled(True)
+            # self.psTISsettingsAction.setDisabled(True)
             self.statusbarmain.showMessage("자동 모드 On")
         else:
             if not self.psAutoStartAction.isChecked():
                 self.setProgramForPasteAction.setEnabled(True)
                 self.setProgram.setEnabled(True)
-                self.fileOpenAction.setEnabled(True)
-                self.openFile.setEnabled(True)
-                self.psTISsettings.setEnabled(True)
-                self.psTISsettingsAction.setEnabled(True)
+                # self.psTISsettings.setEnabled(True)
+                # self.psTISsettingsAction.setEnabled(True)
             self.statusbarmain.showMessage("자동 모드 Off", 5000)
+
+    def ctrlVStartByMenu(self):
+        """메뉴에서 Ctrl+V 모드를 켤 때 거쳐가는 함수"""
+        self.ctrlVStartAction.toggle()
+        self.ctrlVStart()
+
+    def ctrlVStartByToolbar(self):
+        """툴바에서 Ctrl+V 모드를 켤 때 거쳐가는 함수"""
+        self.ctrlVMode.toggle()
+        self.ctrlVStart()
+
+    def ctrlVStart(self):
+        """Ctrl+V 모드 시작 함수"""
+        if self.ctrlVThread.isRunning():
+            self.ctrlVThread.disconnect()   # 스레드 체크
+            self.ctrlVThread.terminate()
+        if self.ctrlVStartAction.isChecked():
+            self.psAutoStartAction.setDisabled(True)
+            self.psMode.setDisabled(True)
+            self.statusbarmain.showMessage("Ctrl+V 모드 On")
+            self.startCtrlVMode()
+        else:
+            self.psAutoStartAction.setEnabled(True)
+            self.psMode.setEnabled(True)
+            self.statusbarmain.showMessage("Ctrl+V 모드 Off", 5000)
+
+    def startCtrlVMode(self):
+        """Ctrl+V 모드 스레드 시작 함수"""
+        if self.ctrlVThread.isRunning():
+            self.ctrlVThread.disconnect()  # 스레드 체크
+            self.ctrlVThread.terminate()
+        self.ctrlVThread = DetectCtrlV(self)  # 스레드 클래스 생성
+        self.ctrlVThread.start()
+        self.ctrlVThread.detectCtrlVSignal.connect(
+            self.copyNextLineAtCtrlVMode)
+
+    @pyqtSlot(bool)
+    def copyNextLineAtCtrlVMode(self, isValid):
+        """Ctrl+V 모드 붙여넣기 실행 함수"""
+        if not isValid or len(self.lineCnt) == 0:
+            return
+        currentCopiedText = self.btn[self.lineCnt[0]].whatTxtForCopy()
+        if currentCopiedText == paste():
+            self.btn[self.lineCnt[0]].setTraceTextLine()
+            time.sleep(0.1)
+            self.nextLineCopy()
 
     def psAutoStartByMenu(self):
         """메뉴에서 포토샵 모드를 켤 때 거쳐가는 함수"""
@@ -1078,21 +1106,20 @@ class MainApp(QMainWindow):
         if self.psAutoStartAction.isChecked():
             self.setProgramForPasteAction.setDisabled(True)
             self.setProgram.setDisabled(True)
-            self.fileOpenAction.setDisabled(True)
-            self.openFile.setDisabled(True)
-            self.psTISsettings.setDisabled(True)
-            self.psTISsettingsAction.setDisabled(True)
+            self.ctrlVStartAction.setDisabled(True)
+            self.ctrlVMode.setDisabled(True)
+            # self.psTISsettings.setDisabled(True)
+            # self.psTISsettingsAction.setDisabled(True)
             self.statusbarmain.showMessage("포토샵 모드 On")
-
             self.psAutoThreadStart()
         else:
             if not self.autoStartAction.isChecked():
                 self.setProgramForPasteAction.setEnabled(True)
                 self.setProgram.setEnabled(True)
-                self.fileOpenAction.setEnabled(True)
-                self.openFile.setEnabled(True)
-                self.psTISsettings.setEnabled(True)
-                self.psTISsettingsAction.setEnabled(True)
+                # self.psTISsettings.setEnabled(True)
+                # self.psTISsettingsAction.setEnabled(True)
+            self.ctrlVStartAction.setEnabled(True)
+            self.ctrlVMode.setEnabled(True)
             self.statusbarmain.showMessage("포토샵 모드 Off", 5000)
 
     def psAutoThreadStart(self):
@@ -1123,7 +1150,7 @@ class MainApp(QMainWindow):
 
     def nextNumOfBtnMode(self, n) -> int:
         """다음 기본 모드 텍스트 라인의 인덱스를 반환하는 함수"""
-        try: 
+        try:
             if self.btn[n].mode:
                 return n
             else:
@@ -1134,10 +1161,15 @@ class MainApp(QMainWindow):
     def nextLineCopy(self):
         """다음 텍스트 라인 복사하기 (기본 버튼 모드만 적용)"""
         temp = self.nextNumOfBtnMode(self.lineCnt[-1] + 1)
-        if temp == -1:  # 마지막 텍스트 라인 복붙했을 때 자동으로 PS 모드 종료
-            self.psAutoStartAction.toggle()
-            self.psMode.toggle()
-            self.psAutoStart()
+        if temp == -1:  # 마지막 텍스트 라인 복붙했을 때 자동으로 PS, Ctrl+V 모드 종료
+            if self.psAutoStartAction.isChecked():
+                self.psAutoStartAction.toggle()
+                self.psMode.toggle()
+                self.psAutoStart()
+            if self.ctrlVStartAction.isChecked():
+                self.ctrlVStartAction.toggle()
+                self.ctrlVMode.toggle()
+                self.ctrlVStart()
             self.statusbarmain.showMessage("마지막 텍스트를 붙여넣었습니다!", 5000)
         else:
             self.btn[temp].copyText()
@@ -1145,6 +1177,12 @@ class MainApp(QMainWindow):
     def setMacroDialog(self):
         """매크로 설정 창 생성 함수"""
         dialog = MacroSetDialog(self)
+
+    def setSymbolDialog(self):
+        """특수문자 설정 창 생성 함수"""
+        dialog = SymbolSetDialog(self)
+        self.setSymbolToolbar()
+        self.setSymbolMenubar()
 
     def macroStartByToolbar(self):
         """툴바에서 매크로 모드를 켤 때 거쳐가는 함수"""
@@ -1235,11 +1273,13 @@ class MainApp(QMainWindow):
                 self.saveCheck = True
                 break
         if self.saveCheck:
-            self.setWindowTitle('*' + basename(self.filepath) + ' - 식붕이툴 ' + self.version)
+            self.setWindowTitle(
+                '*' + basename(self.filepath) + ' - 식붕이툴 ' + self.version)
             self.saveFile.setEnabled(True)
             self.saveNewFile.setEnabled(True)
         else:
-            self.setWindowTitle(basename(self.filepath) + ' - 식붕이툴 ' + self.version)
+            self.setWindowTitle(basename(self.filepath) +
+                                ' - 식붕이툴 ' + self.version)
             self.saveFile.setDisabled(True)
             self.saveNewFile.setDisabled(True)
 
@@ -1343,66 +1383,10 @@ class MainApp(QMainWindow):
             self.recordChange()
             self.statusbarmain.showMessage('변환 완료', 5000)
 
-    def pasteThreePoint(self):
-        """줄임표를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('…')
-        self.statusbarmain.showMessage("'…'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteLongHLine(self):
-        """줄표(가로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('―')
-        self.statusbarmain.showMessage("'―'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteLongVLine(self):
-        """줄표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('│')
-        self.statusbarmain.showMessage("'│'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteLittleJPquotaions(self):
-        """홑낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('「」')
-        self.statusbarmain.showMessage("'「」'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteBigJPquotaions(self):
-        """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('『』')
-        self.statusbarmain.showMessage("'『』'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteEmpHeart(self):
-        """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('♡')
-        self.statusbarmain.showMessage("'♡'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def pasteFullHeart(self):
-        """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('♥')
-        self.statusbarmain.showMessage("'♥'를 복사했습니다.", 5000)
-        if self.autoStartAction.isChecked():
-            self.windowFocus()
-            hotkey('ctrl', 'v')
-
-    def paste8Note(self):
-        """겹낫표(세로)를 복사 및 자동 모드 시 붙여넣는 함수"""
-        copy('♪')
-        self.statusbarmain.showMessage("'♪'를 복사했습니다.", 5000)
+    def pasteSymbol(self, symbol):
+        """특수문자를 복사 및 자동 모드 시 붙여넣는 함수"""
+        copy(symbol)
+        self.statusbarmain.showMessage(f"'{symbol}'를 복사했습니다.", 5000)
         if self.autoStartAction.isChecked():
             self.windowFocus()
             hotkey('ctrl', 'v')
@@ -1416,6 +1400,9 @@ class MainApp(QMainWindow):
         if reply == QMessageBox.Yes:
             if self.psThreadfunc.isRunning():
                 self.psThreadfunc.terminate()
+            if self.ctrlVThread.isRunning():
+                self.ctrlVThread.disconnect()
+                self.ctrlVThread.terminate()
             if self.psAutoStartAction.isChecked():
                 self.psAutoStartAction.toggle()
                 self.psMode.toggle()
@@ -1424,8 +1411,10 @@ class MainApp(QMainWindow):
                 self.startMode.toggle()
             self.psAutoStartAction.setDisabled(True)
             self.psMode.setDisabled(True)
-            self.psTISsettings.setDisabled(True)
-            self.psTISsettingsAction.setDisabled(True)
+            self.ctrlVStartAction.setDisabled(True)
+            self.ctrlVMode.setDisabled(True)
+            # self.psTISsettings.setDisabled(True)
+            # self.psTISsettingsAction.setDisabled(True)
             self.autoStartAction.setDisabled(True)
             self.startMode.setDisabled(True)
             self.ProgramSettingOn = False
@@ -1476,8 +1465,8 @@ class MainApp(QMainWindow):
             self.startMode.toggle()
         self.psAutoStartAction.setDisabled(True)
         self.psMode.setDisabled(True)
-        self.psTISsettings.setDisabled(True)
-        self.psTISsettingsAction.setDisabled(True)
+        # self.psTISsettings.setDisabled(True)
+        # self.psTISsettingsAction.setDisabled(True)
         self.autoStartAction.setDisabled(True)
         self.startMode.setDisabled(True)
         self.ProgramSettingOn = False
@@ -1499,17 +1488,18 @@ class MainApp(QMainWindow):
         """매뉴얼 창 생성 함수"""
         QMessageBox.information(
             self, "매뉴얼", "자세한 사항은 아래 링크를 참고하세요.<br>"
-            "<a href='https://docs.google.com/document/d/1JzMC_iyi265wXQv3zo2yEuC0qF0_NcdVGzgWb15UWig/edit?usp=sharing'>매뉴얼 링크</a>")
+            "<a href='https://docs.google.com/document/d/1Q8_eX5wpb2DEgNo7Lw9LyyRXh7I09aDeYtmQ95-eyAA/edit?usp=sharing'>매뉴얼 링크</a>")
 
     def informationCheck(self):
         """정보 창 생성 함수"""
         QMessageBox.about(
             self, "정보",
-            "<span style='font-weight: bold; font-size: 20px;'>식붕이툴 " + self.version + "</span>&nbsp;&nbsp;&nbsp;&nbsp;"
+            "<span style='font-weight: bold; font-size: 20px;'>식붕이툴 " +
+            self.version + "</span>&nbsp;&nbsp;&nbsp;&nbsp;"
             "<br><br>제작: <span style='font-weight: bold;'>고리성운</span><br>"
             "문의: <a href='https://docs.google.com/spreadsheets/d/1L4ai00inqZpMqeJuhz7bOCdrWgMTYHEZKl7EXY-nHqM/edit?usp=sharing'>구글 시트 링크</a>"
             "<br>제작자 블로그: <a href='https://blog.naver.com/dnjsfh611'>블로그 링크</a>"
-            "<br><br>Special Thanks to : <br>함정, 공포투성이의 너, ENE" )
+            "<br><br>Special Thanks to : <br>함정, 공포투성이의 너, ENE, 다이아")
 
     def windowFocus(self):
         """지정한 프로그램을 최상위로 옮겨 focus 하는 함수"""
@@ -1543,7 +1533,12 @@ class MainApp(QMainWindow):
         if self.psThreadfunc.isRunning():  # PS 모드 스레드 체크
             self.psThreadfunc.terminate()
             self.psThreadfunc.wait()
-        
+
+        if self.ctrlVThread.isRunning():
+            self.ctrlVThread.disconnect()  # Ctrl+V 모드 스레드 체크
+            self.ctrlVThread.terminate()
+            self.ctrlVThread.wait()
+
         if self.bmkThread.isRunning():  # 북마크 스레드 체크
             self.bmkThread.terminate()
             self.bmkThread.wait()
@@ -1576,6 +1571,6 @@ class MainApp(QMainWindow):
         self.settings.setValue("State", self.saveState())
         self.settings.setValue("AdvSettings", self.advSettingsList)
         self.settings.setValue("MacroList", self.macroList)
+        self.settings.setValue("SymbolList", self.symbolList)
         self.settings.setValue("TextItemsSettings", self.textItemStyleList)
         self.settings.setValue("CurrentTextItem", self.currentTextItemStyle)
-

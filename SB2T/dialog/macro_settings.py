@@ -1,13 +1,7 @@
-from PyQt5.QtWidgets import (
-    QDialog,
-    QPushButton,
-    QLabel,
-    QVBoxLayout,
-    QGridLayout,
-    QListWidget
-)
-from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import (QDialog, QGridLayout, QLabel, QListWidget,
+                             QPushButton, QVBoxLayout)
 
 from .macro_add import MacroAddDialog
 
@@ -90,7 +84,8 @@ class MacroSetDialog(QDialog):
 
     def modifyMacro(self):
         """매크로 수정 창 생성하는 함수"""
-        modifyDialog = MacroAddDialog(self, self.parent.macroList[self.selectedItem])
+        modifyDialog = MacroAddDialog(
+            self, self.parent.macroList[self.selectedItem])
         self.listwidget.setCurrentItem(self.listwidget.item(self.selectedItem))
         self.clickedList()
 
@@ -108,9 +103,11 @@ class MacroSetDialog(QDialog):
         """매크로 활성화 여부 함수"""
         temp = self.parent.macroList[self.selectedItem].split('#&@&#')
         if boolean:
-            txt = temp[0] + '#&@&#' + temp[1] + '#&@&#' + temp[2] + '#&@&#' + temp[3] + '#&@&#' + temp[4] + '#&@&#' + '1'
+            txt = temp[0] + '#&@&#' + temp[1] + '#&@&#' + temp[2] + \
+                '#&@&#' + temp[3] + '#&@&#' + temp[4] + '#&@&#' + '1'
         else:
-            txt = temp[0] + '#&@&#' + temp[1] + '#&@&#' + temp[2] + '#&@&#' + temp[3] + '#&@&#' + temp[4] + '#&@&#' + '0'
+            txt = temp[0] + '#&@&#' + temp[1] + '#&@&#' + temp[2] + \
+                '#&@&#' + temp[3] + '#&@&#' + temp[4] + '#&@&#' + '0'
         self.parent.macroList[self.selectedItem] = txt
         self.listUp()
         self.listwidget.setCurrentItem(self.listwidget.item(self.selectedItem))
@@ -146,4 +143,3 @@ class MacroSetDialog(QDialog):
         if e.key() == Qt.Key_Delete:
             if self.selectedItem != -1:
                 self.deleteMacro()
-
