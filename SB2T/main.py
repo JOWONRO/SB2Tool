@@ -1488,7 +1488,7 @@ class MainApp(QMainWindow):
         """매뉴얼 창 생성 함수"""
         QMessageBox.information(
             self, "매뉴얼", "자세한 사항은 아래 링크를 참고하세요.<br>"
-            "<a href='https://docs.google.com/document/d/1JzMC_iyi265wXQv3zo2yEuC0qF0_NcdVGzgWb15UWig/edit?usp=sharing'>매뉴얼 링크</a>")
+            "<a href='https://docs.google.com/document/d/1Q8_eX5wpb2DEgNo7Lw9LyyRXh7I09aDeYtmQ95-eyAA/edit?usp=sharing'>매뉴얼 링크</a>")
 
     def informationCheck(self):
         """정보 창 생성 함수"""
@@ -1499,7 +1499,7 @@ class MainApp(QMainWindow):
             "<br><br>제작: <span style='font-weight: bold;'>고리성운</span><br>"
             "문의: <a href='https://docs.google.com/spreadsheets/d/1L4ai00inqZpMqeJuhz7bOCdrWgMTYHEZKl7EXY-nHqM/edit?usp=sharing'>구글 시트 링크</a>"
             "<br>제작자 블로그: <a href='https://blog.naver.com/dnjsfh611'>블로그 링크</a>"
-            "<br><br>Special Thanks to : <br>함정, 공포투성이의 너, ENE")
+            "<br><br>Special Thanks to : <br>함정, 공포투성이의 너, ENE, 다이아")
 
     def windowFocus(self):
         """지정한 프로그램을 최상위로 옮겨 focus 하는 함수"""
