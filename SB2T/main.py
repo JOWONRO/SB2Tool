@@ -31,7 +31,7 @@ class MainApp(QMainWindow):
     def __init__(self):
         super().__init__(None, Qt.WindowStaysOnTopHint)
         self.settings = QSettings("RingNebula", "SB2Tool")
-        self.version = 'Beta3.3'
+        self.version = 'Beta4.0'
         self.font = QFont()
         self.toolbar = QToolBar("기본 툴바")
         self.addToolBar(Qt.LeftToolBarArea, self.toolbar)
