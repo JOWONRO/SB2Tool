@@ -177,7 +177,7 @@ class MainApp(QMainWindow):
         self.saveFile = QAction('저장(&S)', self)
         self.saveFile.triggered.connect(
             lambda: self.saveTextFile(self.filepath))
-        self.saveFile.setShortcut('Y')
+        self.saveFile.setShortcut('Ctrl+S')
         self.saveFile.setDisabled(True)
 
         self.saveNewFile = QAction('다른 이름으로 저장(&A)', self)
@@ -1116,10 +1116,10 @@ class MainApp(QMainWindow):
             if not self.autoStartAction.isChecked():
                 self.setProgramForPasteAction.setEnabled(True)
                 self.setProgram.setEnabled(True)
-                self.ctrlVStartAction.setEnabled(True)
-                self.ctrlVMode.setEnabled(True)
                 # self.psTISsettings.setEnabled(True)
                 # self.psTISsettingsAction.setEnabled(True)
+            self.ctrlVStartAction.setEnabled(True)
+            self.ctrlVMode.setEnabled(True)
             self.statusbarmain.showMessage("포토샵 모드 Off", 5000)
 
     def psAutoThreadStart(self):
