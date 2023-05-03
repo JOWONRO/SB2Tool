@@ -1064,8 +1064,9 @@ class MainApp(QMainWindow):
             self.statusbarmain.showMessage("Ctrl+V 모드 On")
             self.startCtrlVMode()
         else:
-            self.psAutoStartAction.setEnabled(True)
-            self.psMode.setEnabled(True)
+            if self.ProgramSettingOn and self.checkPhotoshop():
+                self.psAutoStartAction.setEnabled(True)
+                self.psMode.setEnabled(True)
             self.statusbarmain.showMessage("Ctrl+V 모드 Off", 5000)
 
     def startCtrlVMode(self):
@@ -1083,11 +1084,12 @@ class MainApp(QMainWindow):
         """Ctrl+V 모드 붙여넣기 실행 함수"""
         if not isValid or len(self.lineCnt) == 0:
             return
-        currentCopiedText = self.btn[self.lineCnt[0]].whatTxtForCopy()
+        currentCopiedText = self.btn[self.lineCnt[0]].getAllCopiableTxt()
         if currentCopiedText == paste():
             self.btn[self.lineCnt[0]].setTraceTextLine()
             time.sleep(0.1)
             self.nextLineCopy()
+            self.resetRecord.setEnabled(True)
 
     def psAutoStartByMenu(self):
         """메뉴에서 포토샵 모드를 켤 때 거쳐가는 함수"""
@@ -1135,7 +1137,6 @@ class MainApp(QMainWindow):
         """포토샵 모드 붙여넣기 실행 함수"""
         if len(self.lineCnt) == 0:  # 첫 번째 텍스트 라인 모드 체크
             self.lineCnt.append(self.nextNumOfBtnMode(0))
-
         try:
             if boolean:
                 self.btn[self.lineCnt[0]].copyText()

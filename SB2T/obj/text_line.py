@@ -27,7 +27,8 @@ class TextLine(QPushButton):
             self.act_connection = 1
         else:
             self.act_connection = 0
-        self.attribute = 'none'  # 대화 = conversation,
+        self.attribute = 'none'
+        # 대화 = conversation,
         # 생각 = think,
         # 독백 = narration,
         # 강조 = emphasis,
@@ -96,23 +97,14 @@ class TextLine(QPushButton):
         bmk = ''
         border_left = ''
         if self.parent.bookmark == self.num:
-            border_left = 'border-left: 3px solid #e5aa17;'
             bmk = (
-                'border-top: 3px solid #e5aa17;'
-                'border-right: 3px solid #e5aa17;'
-                'border-bottom: 3px solid #e5aa17;'
+                'border: 5px solid #e5aa17;'
                 'font-weight: bold;'
-                # 'color: #803701'
-                'color: white;'
             )
 
         if status == 'default':
             if self.pasted == 0:
                 background_color = ''
-                if self.parent.bookmark == self.num:
-                    background_color = 'background-color: #e5aa17;'
-                else:
-                    background_color = ''
             elif self.pasted == 1:
                 background_color = 'background-color: #ffe0b2;'
             elif self.pasted == 2:
@@ -374,7 +366,7 @@ class TextLine(QPushButton):
         else:
             self.copyOneLine()
 
-    def whatTxtForCopy(self) -> str:
+    def getExceptedTxt(self) -> str:
         """실제 복사할 텍스트를 반환하는 함수\n
         소괄호, 중괄호, 대괄호, 큰따음표, 작은따음표 제외 복사 기능 포함"""
         temptxt = self.text()
@@ -400,9 +392,36 @@ class TextLine(QPushButton):
 
         return temptxt
 
+    def getOneLineTxt(self):
+        return self.getExceptedTxt()
+
+    def getAllLinesTxt(self):
+        temptxt = ''
+        i = self.head
+        self.parent.lineCnt.clear()
+        while True:
+            if self.parent.btn[i].mode:
+                temptxt = temptxt + self.parent.btn[i].getExceptedTxt()
+                self.parent.btn[i].setChecked(True)
+                self.parent.lineCnt.append(i)
+                if self.parent.btn[i].connected_mode != 2:
+                    temptxt = temptxt + '\r'  # \n 경우, 포토샵에 붙여넣기 할 때 개행으로 인식 안 됨
+
+            if self.parent.btn[i].connected_mode == 2:
+                break
+            else:
+                i += 1
+        return temptxt
+
+    def getAllCopiableTxt(self):
+        if self.act_connection:
+            return self.getAllLinesTxt()
+        else:
+            return self.getOneLineTxt()
+
     def copyOneLine(self):
         """한 줄만 복사하는 함수"""
-        copy(self.whatTxtForCopy())
+        copy(self.getOneLineTxt())
 
         self.parent.lineStatus.setText(' 줄 ' + str(self.num + 1) + '  ')
         self.parent.lineCnt.clear()
@@ -414,24 +433,9 @@ class TextLine(QPushButton):
 
     def copyConnectedLines(self):
         """연결된 모든 줄을 한꺼번에 복사하는 함수"""
-        temptxt = ''
-        i = self.head
-        self.parent.lineCnt.clear()
-        while True:
-            if self.parent.btn[i].mode:
-                temptxt = temptxt + self.parent.btn[i].whatTxtForCopy()
-                self.parent.btn[i].setChecked(True)
-                self.parent.lineCnt.append(i)
-                if self.parent.btn[i].connected_mode != 2:
-                    temptxt = temptxt + '\r'  # \n 경우, 포토샵에 붙여넣기 할 때 개행으로 인식 안 됨
+        copy(self.getAllLinesTxt())
 
-            if self.parent.btn[i].connected_mode == 2:
-                break
-            else:
-                i += 1
-        copy(temptxt)
-
-        self.parent.lineStatus.setText(' 줄 ' + str(i + 1) + '  ')
+        self.parent.lineStatus.setText(' 줄 ' + str(self.num + 1) + '  ')
         self.autoScroll(self.parent.lineCnt[-1])
         self.cleanToggle()
         if self.parent.ProgramSettingOn:
