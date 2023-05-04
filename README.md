@@ -1,6 +1,6 @@
 # SB2Tool
 식붕이툴 전체 코드 및 파일
-- backup 폴더 내 파일은 pyinstaller로 식붕이툴을 실행파일로 만들었을 때 생기는 파일들 중, 프로그램 실행에 영향을 끼치지 않아 제외해도 되는 파일들을 모아놓음. 덮어쓰기 후 되돌리기 하면 됨.
+- backup 폴더 내 파일은 pyinstaller로 식붕이툴을 실행파일로 만들었을 때 생기는 파일들 중, 프로그램 실행에 영향을 끼치지 않아 제외해도 되는 파일들을 모아놓음. 덮어쓰기 후 되돌리기 하면 됨. 이후 tcl과 tk에 dummy.txt 파일 하나씩 둬야 함.
 
 각종 링크들
 - 설치파일 다운로드 : https://www.dropbox.com/s/yw0fqlnrcvr129p/%EC%8B%9D%EB%B6%95%EC%9D%B4%ED%88%B4-Beta4.0_Setup.exe?dl=0
