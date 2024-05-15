@@ -1,43 +1,56 @@
 # SB2Tool
+
 식붕이툴 전체 코드 및 파일
+
 - backup 폴더 내 파일은 pyinstaller로 식붕이툴을 실행파일로 만들었을 때 생기는 파일들 중, 프로그램 실행에 영향을 끼치지 않아 제외해도 되는 파일들을 모아놓음. 덮어쓰기 후 되돌리기 하면 됨. 이후 tcl과 tk에 dummy.txt 파일 하나씩 둬야 함.
 
 각종 링크들
-- 설치파일 다운로드 : https://www.dropbox.com/s/yw0fqlnrcvr129p/%EC%8B%9D%EB%B6%95%EC%9D%B4%ED%88%B4-Beta4.0_Setup.exe?dl=0
-- 매뉴얼 : https://docs.google.com/document/d/1Q8_eX5wpb2DEgNo7Lw9LyyRXh7I09aDeYtmQ95-eyAA/edit?usp=sharing
-- 버그 제보 및 피드백 : https://docs.google.com/spreadsheets/d/1L4ai00inqZpMqeJuhz7bOCdrWgMTYHEZKl7EXY-nHqM/edit?usp=sharing
+
+- 설치파일 다운로드 : <https://www.dropbox.com/s/yw0fqlnrcvr129p/%EC%8B%9D%EB%B6%95%EC%9D%B4%ED%88%B4-Beta4.0_Setup.exe?dl=0>
+- 매뉴얼 : <https://docs.google.com/document/d/1Q8_eX5wpb2DEgNo7Lw9LyyRXh7I09aDeYtmQ95-eyAA/edit?usp=sharing>
+- 버그 제보 및 피드백 : <https://docs.google.com/spreadsheets/d/1L4ai00inqZpMqeJuhz7bOCdrWgMTYHEZKl7EXY-nHqM/edit?usp=sharing>
 
 &nbsp;
 
-# 최근 업데이트 내용 정리
-## Beta4.0
+## 최근 업데이트 내용 정리
+
+### Public으로 전환(2024-05-15)
+
+오랜 방치로 Public으로 전환.
+
+### Beta4.0
+
 - ANSI로 텍스트 불러오던 버그 수정
 - 자동모드, 포토샵 모드에서도 파일 불러올 수 있게 수정
 - 포토샵 문자 설정 비활성화
 - Ctrl+V 모드 추가
 - 특수문자 설정 추가
----
-## Beta3.3
+
+### Beta3.3
+
 - 파일 드래그 앤 드랍 안 되던 버그 수정
 - 대괄호 안에 태그가 아닌 다른 문구가 들어갈 때 생기는 버그 수정
 - 특수 기호 툴바를 따로 생성
 - 특수 기호 ♡, ♥, ♪ 추가
 - 주석도 검색 가능하도록 변경 (바꾸기는 불가)
----
-## Beta3.2
+
+### Beta3.2
+
 - 대사 태그별 포토샵 문자 설정 가능 -> 태그: 대화, 생각, 강조, 독백, 배경, 효과
 - 포토샵 모드 활성화 방식 변경(버그 수정) -> GetActiveObject("Photoshop.Application")를 사용하지 않고 프로세스를 직접 검색하여 확인하는 방식으로 변경
 - 책갈피 표시 방식 변경
 - 모든 텍스트 묶음 활성화 및 비활성화 기능 추가
 - 초기 메인 윈도우 창 크기 변경
 - 실행 취소, 되돌리기 시 해당 라인으로 이동하게끔 수정
----
-## Beta3.1
+
+### Beta3.1
+
 - 항상 위에 고정 기능 추가
 - 버그 수정 -> 포토샵 모드 동작 중 '연결된 텍스트 라인' 붙여넣기 진행 시, 개행이 제대로 이루어지지 않는 문제 해결
 - 글꼴 변경 시 현재 사용 중인 글꼴을 default 값으로 지정
----
-## Beta3.0
+
+### Beta3.0
+
 - 드래그 앤 드랍 보완 -> 모드 켰을 때 드랍 못하도록 막음
 - 텍스트 라인 더블클릭 시 바로 텍스트 수정 가능하게 개선
 - 오류 시스템 보완 -> 파일 불러오기, 프로그램 지정 시 강제 종료 방지
@@ -48,5 +61,3 @@
 - 주석 폰트 -> 이탤릭체로 변경
 - 책갈피 기능 추가 -> 한 개 책갈피만 가능, 책갈피가 있는 파일을 불러올 경우 자동으로 책갈피가 있는 라인으로 이동.
 - 종료 확인창 삭제
----
-
