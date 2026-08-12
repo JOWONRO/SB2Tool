@@ -1,0 +1,14 @@
+# 저장소에는 LF로 저장하고, 작업 트리에는 CRLF로 체크아웃한다.
+# (윈도우 전용 프로젝트라 작업 트리는 플랫폼과 무관하게 CRLF로 고정)
+* text=auto eol=crlf
+
+# 바이너리 - 줄바꿈 변환 금지
+*.png binary
+*.ico binary
+*.bmp binary
+*.gif binary
+*.jpg binary
+*.exe binary
+*.zip binary
+*.pyd binary
+*.dll binary

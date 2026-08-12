@@ -5,3 +5,7 @@ __pycache__/
 .vscode
 build
 dist
+
+# 가상환경
+.venv
+venv

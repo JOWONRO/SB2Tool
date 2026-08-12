@@ -1,0 +1,8 @@
+# 빌드 전용 의존성 (실행에는 불필요)
+# 먼저 requirements.txt 를 설치한 뒤 이걸 설치할 것.
+
+# PyInstaller 6.0부터 onedir 출력 구조가 바뀌어(모든 파일이 _internal\ 하위로 이동)
+# 기존 SB2ToolBeta4.0.nsi 의 파일 경로가 전부 어긋난다.
+# 게다가 SB2Tool.spec 이 쓰는 win_no_prefer_redirects / win_private_assemblies
+# 인자는 6.x에서 제거됐다. 그래서 5.x 마지막 버전으로 고정한다.
+pyinstaller==5.13.2
