@@ -9,19 +9,28 @@ import win32com.client
 from clipboard import copy, paste
 from psutil import Process as Prcss
 from pyautogui import getAllTitles, getWindowsWithTitle, hotkey
-from PyQt5.QtCore import QSettings, Qt, pyqtSlot
+from PyQt5.QtCore import QSettings, Qt, QTimer, pyqtSlot
 from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtWidgets import (QAction, QDialog, QFileDialog, QFontDialog,
-                             QInputDialog, QLabel, QMainWindow, QMessageBox,
-                             QPushButton, QScrollArea, QStatusBar, QToolBar,
-                             QVBoxLayout, QWidget)
+from PyQt5.QtWidgets import (QAction, QApplication, QCheckBox, QDialog,
+                             QFileDialog, QFontDialog, QInputDialog, QLabel,
+                             QMainWindow, QMessageBox, QPushButton,
+                             QScrollArea, QStatusBar, QToolBar, QVBoxLayout,
+                             QWidget)
 from win32gui import SetForegroundWindow
 from win32process import GetWindowThreadProcessId
 
-from SB2T.dialog import (AdvSettingsDialog, MacroSetDialog, SymbolSetDialog,
-                         TextChangeDialog, TextFindDialog, TextItemStyleDialog)
+from SB2T.dialog import (AdvSettingsDialog, HotkeySetDialog, MacroSetDialog,
+                         SymbolSetDialog, TextChangeDialog, TextFindDialog,
+                         TextItemStyleDialog)
 from SB2T.obj import MacroStartwithProcess, TextLine
-from SB2T.thread import CheckBmkThread, DetectCtrlV, StartPsThread
+from SB2T.thread import (CheckBmkThread, DetectCtrlV, GlobalHotkey,
+                         StartPsThread, build_hotkey)
+from SB2T.constants import (ADV_SETTINGS_DEFAULT, CTRLV_DELAY_MAX,
+                            CTRLV_DELAY_MIN)
+from SB2T.ps_connect import connect_photoshop
+from SB2T.ps_notify import (install_notifier, read_placeholder_pref,
+                            set_placeholder_pref, uninstall_notifier)
+from SB2T.version import __version__
 
 
 # =====================================메인 시작===================================
@@ -31,7 +40,7 @@ class MainApp(QMainWindow):
     def __init__(self):
         super().__init__(None, Qt.WindowStaysOnTopHint)
         self.settings = QSettings("RingNebula", "SB2Tool")
-        self.version = 'Beta4.0'
+        self.version = __version__
         self.font = QFont()
         self.toolbar = QToolBar("기본 툴바")
         self.addToolBar(Qt.LeftToolBarArea, self.toolbar)
@@ -55,10 +64,43 @@ class MainApp(QMainWindow):
         self.commentWithNumber = 0
         self.commentWithP = 0
         self.onTopDefault = 1
+        self.ctrlVDelay = 100
+        self.psIntegration = 1
+        self.skipPlaceholderNotice = 0
         self.advSettingsList = []
+        # 포토샵 COM 객체. 실제로 필요해질 때까지 만들지 않는다 (ensurePsApp 참고)
+        self.ps_app = None
+        # Ctrl+V 모드에서 다음 대사로 넘어가기를 기다리는 중인지 여부
+        self.ctrlVPending = False
+        # 대사 이동 전역 단축키 (5.0 추가)
+        # 매크로 설정처럼 최대 두 키 조합이라 [첫째 키, 둘째 키] 형태로 들고 있다
+        self.hotkeyNext = ['', '']
+        self.hotkeyPrev = ['', '']
+        self.hotkeyRecopy = ['', '']
+        self.hotkeyThread = None
         # =========================================================================
         self.checkLastSettings()
         self.initUI()
+
+    def applyAdvSettingsList(self):
+        """advSettingsList의 값을 각 고급 설정 변수에 반영하는 함수.
+
+        새 고급 설정을 추가할 때는 ADV_SETTINGS_DEFAULT 뒤에 기본값을 붙이고
+        여기에 한 줄만 추가하면 된다.
+        """
+        self.exceptbrackets = self.advSettingsList[0]
+        self.exceptCurlybrackets = self.advSettingsList[1]
+        self.exceptSquarebrackets = self.advSettingsList[2]
+        self.exceptDQuotaion = self.advSettingsList[3]
+        self.exceptSQuotaion = self.advSettingsList[4]
+        self.pasteCtrlEnter = self.advSettingsList[5]
+        self.commentWithNumber = self.advSettingsList[6]
+        self.commentWithP = self.advSettingsList[7]
+        self.onTopDefault = self.advSettingsList[8]
+        self.ctrlVDelay = min(
+            max(self.advSettingsList[9], CTRLV_DELAY_MIN), CTRLV_DELAY_MAX)
+        self.psIntegration = self.advSettingsList[10]
+        self.skipPlaceholderNotice = self.advSettingsList[13]
 
     def checkLastSettings(self):
         """마지막으로 저장된 설정을 불러오는 함수"""
@@ -68,7 +110,8 @@ class MainApp(QMainWindow):
         except:
             self.notFirstStart = False
         if not self.notFirstStart:  # 초기화
-            self.advSettingsList = [1, 0, 0, 0, 0, 0, 1, 1, 1]
+            self.advSettingsList = list(ADV_SETTINGS_DEFAULT)
+            self.applyAdvSettingsList()
             self.macroList = []
             self.symbolList = ['…', '―', '│', '「」', '『』', '♡', '♥', '♪']
             self.resize(291, 618)
@@ -108,21 +151,37 @@ class MainApp(QMainWindow):
                 self.textItemStyleList = []
                 self.currentTextItemStyle = None
             try:
-                self.advSettingsList = self.settings.value(
-                    "AdvSettings", [], int)
-                self.exceptbrackets = self.advSettingsList[0]
-                self.exceptCurlybrackets = self.advSettingsList[1]
-                self.exceptSquarebrackets = self.advSettingsList[2]
-                self.exceptDQuotaion = self.advSettingsList[3]
-                self.exceptSQuotaion = self.advSettingsList[4]
-                self.pasteCtrlEnter = self.advSettingsList[5]
-                self.commentWithNumber = self.advSettingsList[6]
-                self.commentWithP = self.advSettingsList[7]
-                self.onTopDefault = self.advSettingsList[8]
+                saved = self.settings.value("AdvSettings", [], int)
+                if saved is None:
+                    saved = []
+                # 저장된 값이 현재 옵션 개수보다 적어도(= 구버전에서 올라온 경우)
+                # 부족한 항목만 기본값으로 채운다. 예전에는 여기서 IndexError가 나서
+                # 고급 설정 전체가 기본값으로 리셋됐다.
+                self.advSettingsList = list(ADV_SETTINGS_DEFAULT)
+                for i in range(min(len(saved), len(ADV_SETTINGS_DEFAULT))):
+                    self.advSettingsList[i] = int(saved[i])
+                self.applyAdvSettingsList()
             except Exception as e:
                 QMessageBox.warning(
                     self, "오류", "고급 설정을 불러오지 못했습니다.\n" + str(e))
-                self.advSettingsList = [1, 0, 0, 0, 0, 0, 1, 1, 1]
+                self.advSettingsList = list(ADV_SETTINGS_DEFAULT)
+                self.applyAdvSettingsList()
+            try:
+                self.hotkeyNext = [
+                    self.settings.value("HotkeyNext1", '', str),
+                    self.settings.value("HotkeyNext2", '', str)]
+                self.hotkeyPrev = [
+                    self.settings.value("HotkeyPrev1", '', str),
+                    self.settings.value("HotkeyPrev2", '', str)]
+                self.hotkeyRecopy = [
+                    self.settings.value("HotkeyRecopy1", '', str),
+                    self.settings.value("HotkeyRecopy2", '', str)]
+            except Exception as e:
+                QMessageBox.warning(
+                    self, "오류", "대사 이동 단축키 설정을 불러오지 못했습니다.\n" + str(e))
+                self.hotkeyNext = ['', '']
+                self.hotkeyPrev = ['', '']
+                self.hotkeyRecopy = ['', '']
             try:
                 self.font = self.settings.value("LastFont")
             except Exception as e:
@@ -150,7 +209,7 @@ class MainApp(QMainWindow):
         self.recordOfPasteIndex = -1
         self.recordOfBtn = []
         self.recordOfBtnIndex = -1
-        self.psThreadfunc = StartPsThread(self)
+        self.psThreadfunc = None
         self.ctrlVThread = DetectCtrlV(self)
         self.bookmark = -1
         self.bmkThread = CheckBmkThread(self)
@@ -165,6 +224,7 @@ class MainApp(QMainWindow):
         self.setWindowTitle('식붕이툴 ' + self.version)
         self.setWindowIcon(QIcon('icons/sbticon.png'))
         self.setAcceptDrops(True)
+        self.startHotkeyThread()  # 저장된 대사 이동 단축키 등록
         self.show()
 
     # UI functions ######################################################
@@ -215,6 +275,10 @@ class MainApp(QMainWindow):
         self.changeFont = QAction('글꼴(&F)', self)
         self.changeFont.triggered.connect(self.showFontDialog)
         self.changeFont.setDisabled(True)
+
+        self.setHotkey = QAction('대사 이동 단축키 설정(&K)', self)
+        self.setHotkey.triggered.connect(self.setHotkeyDialog)
+        self.setHotkey.setShortcut('Ctrl+K')
 
         self.advSettings = QAction('고급 설정(&A)', self)
         self.advSettings.triggered.connect(self.advSettingsDialogShow)
@@ -342,6 +406,7 @@ class MainApp(QMainWindow):
         self.configMenu.addAction(self.setProgram)
         self.configMenu.addAction(self.setMacro)
         self.configMenu.addAction(self.setSymbol)
+        self.configMenu.addAction(self.setHotkey)
         # self.configMenu.addAction(self.psTISsettings)
         self.configMenu.addSeparator()
         self.configMenu.addAction(self.changeFont)
@@ -923,9 +988,20 @@ class MainApp(QMainWindow):
     #     dialog = TextItemStyleDialog(self)
 
     def checkPhotoshop(self) -> bool:
-        """지정된 프로그램이 포토샵인지 확인하는 함수"""
-        # check = False
-        pythoncom.CoInitialize()
+        """지정된 프로그램이 포토샵인지 확인하는 함수
+
+        Beta4.0까지는 이 함수가 ps.Application() COM 연결까지 같이 했다.
+        포토샵이 바쁘면 COM 호출이 RPC 타임아웃까지 블로킹되는데, 이걸 UI
+        스레드에서 부르는 바람에 '프로그램 지정 후 30초 먹통' 증상이 났다.
+        (라임 님 제보) 게다가 프로그램을 지정할 때마다, Ctrl+V 모드를 끌 때마다
+        호출돼서 포토샵 모드를 안 쓰는 사람도 매번 그 비용을 냈다.
+
+        그래서 5.0부터는 여기서 '프로세스 이름 검사'만 한다.
+        실제 COM 연결은 포토샵 모드를 켜는 시점에 ensurePsApp()이 맡는다.
+        """
+        if not self.psIntegration:
+            return False  # 고급 설정에서 포토샵 연동을 꺼둔 경우
+
         check = False
         test = True
         try:
@@ -959,28 +1035,56 @@ class MainApp(QMainWindow):
                                 "프로세스 체크 오류!\n" + str(e))
 
         if test:
+            # 창 핸들로 프로세스를 못 잡은 경우에만 COM으로 확인한다.
+            # GetActiveObject는 '이미 실행 중인' 인스턴스만 찾으므로
+            # 새 포토샵을 띄우느라 멎는 일은 없다.
+            pythoncom.CoInitialize()
             try:
                 temp = win32com.client.GetActiveObject("Photoshop.Application")
                 check = True
             except Exception as e:
                 QMessageBox.warning(self, "오류",
                                     "포토샵 체크 오류!\n자동 모드는 가능합니다.\n" + str(e))
+            pythoncom.CoUninitialize()
 
-        if check:
-            try:
-                self.ps_app = ps.Application()
-            except Exception as e:
-                check = False
-                QMessageBox.warning(self, "오류",
-                                    "포토샵 연동에 실패했습니다!\n자동 모드는 가능합니다.\n" + str(e))
-        pythoncom.CoUninitialize()
         return check
-        # if check:
-        #     self.psAutoStartAction.setEnabled(True)
-        #     self.psMode.setEnabled(True)
-        # else:
-        #     self.psAutoStartAction.setDisabled(True)
-        #     self.psMode.setDisabled(True)
+
+    def ensurePsApp(self) -> bool:
+        """포토샵 COM 객체를 (필요할 때) 연결하는 함수
+
+        연결에 시간이 걸릴 수 있으므로 포토샵 모드를 켜는 시점에만 부른다.
+        한 번 연결하면 재사용한다.
+        """
+        if not self.psIntegration:
+            QMessageBox.warning(
+                self, "포토샵 연동 꺼짐",
+                "고급 설정에서 포토샵 연동이 꺼져 있습니다.\n"
+                "포토샵 모드를 쓰려면 설정 -> 고급 설정에서 켜주세요.")
+            return False
+
+        if self.ps_app is not None:
+            return True
+
+        self.statusbarmain.showMessage("포토샵에 연결하는 중...")
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.processEvents()  # 상태바 메시지가 실제로 그려지도록
+        try:
+            pythoncom.CoInitialize()
+            self.ps_app, method, err = connect_photoshop()
+        except Exception as e:
+            self.ps_app, method, err = None, '', str(e)
+        finally:
+            QApplication.restoreOverrideCursor()
+
+        if self.ps_app is not None:
+            self.statusbarmain.showMessage("포토샵 연동 완료 (%s)" % method, 5000)
+            return True
+
+        self.statusbarmain.showMessage("포토샵 연동 실패", 5000)
+        QMessageBox.warning(
+            self, "포토샵 연동 실패",
+            err + "\n\n포토샵 모드는 쓸 수 없지만 자동 모드는 그대로 사용할 수 있습니다.")
+        return False
 
     # main functions #########################################################
     def setStayOnTop(self):
@@ -1055,6 +1159,7 @@ class MainApp(QMainWindow):
 
     def ctrlVStart(self):
         """Ctrl+V 모드 시작 함수"""
+        self.ctrlVPending = False
         if self.ctrlVThread.isRunning():
             self.ctrlVThread.disconnect()   # 스레드 체크
             self.ctrlVThread.terminate()
@@ -1084,12 +1189,21 @@ class MainApp(QMainWindow):
         """Ctrl+V 모드 붙여넣기 실행 함수"""
         if not isValid or len(self.lineCnt) == 0:
             return
+        if self.ctrlVPending:
+            return  # 아직 이전 붙여넣기 처리 중이면 무시 (중복 진행 방지)
         currentCopiedText = self.btn[self.lineCnt[0]].getAllCopiableTxt()
         if currentCopiedText == paste():
             self.btn[self.lineCnt[0]].setTraceTextLine()
-            time.sleep(0.1)
-            self.nextLineCopy()
-            self.resetRecord.setEnabled(True)
+            # 기존에는 time.sleep(0.1)로 UI 스레드를 통째로 멈춰 세웠다.
+            # 대기시간을 늘릴 수 있게 하면서 창이 멎는 걸 막기 위해 타이머로 교체.
+            self.ctrlVPending = True
+            QTimer.singleShot(self.ctrlVDelay, self.advanceLineAtCtrlVMode)
+
+    def advanceLineAtCtrlVMode(self):
+        """(대기시간 경과 후) Ctrl+V 모드에서 다음 대사로 넘어가는 함수"""
+        self.ctrlVPending = False
+        self.nextLineCopy()
+        self.resetRecord.setEnabled(True)
 
     def psAutoStartByMenu(self):
         """메뉴에서 포토샵 모드를 켤 때 거쳐가는 함수"""
@@ -1103,9 +1217,11 @@ class MainApp(QMainWindow):
 
     def psAutoStart(self):
         """포토샵 모드 시작 함수"""
-        if self.psThreadfunc.isRunning():   # 스레드 체크
-            self.psThreadfunc.terminate()
         if self.psAutoStartAction.isChecked():
+            if not self.ensurePsApp():  # COM 연결은 이 시점에 처음 이뤄진다
+                self.psAutoStartAction.setChecked(False)
+                self.psMode.setChecked(False)
+                return
             self.setProgramForPasteAction.setDisabled(True)
             self.setProgram.setDisabled(True)
             self.ctrlVStartAction.setDisabled(True)
@@ -1115,6 +1231,7 @@ class MainApp(QMainWindow):
             self.statusbarmain.showMessage("포토샵 모드 On")
             self.psAutoThreadStart()
         else:
+            self.psAutoThreadStop()
             if not self.autoStartAction.isChecked():
                 self.setProgramForPasteAction.setEnabled(True)
                 self.setProgram.setEnabled(True)
@@ -1124,30 +1241,135 @@ class MainApp(QMainWindow):
             self.ctrlVMode.setEnabled(True)
             self.statusbarmain.showMessage("포토샵 모드 Off", 5000)
 
-    def psAutoThreadStart(self):
-        """포토샵 모드 스레드 시작 함수"""
-        if self.psThreadfunc.isRunning():  # 스레드 체크
-            self.psThreadfunc.terminate()
-        self.psThreadfunc = StartPsThread(self)  # 스레드 클래스 생성
-        self.psThreadfunc.start()
-        self.psThreadfunc.psTextLayerSignal.connect(self.psPaste)
+    def checkPlaceholderPref(self):
+        """'자리 표시자 텍스트' 옵션을 확인하고 안내하는 함수
 
-    @pyqtSlot(bool)
-    def psPaste(self, boolean):
-        """포토샵 모드 붙여넣기 실행 함수"""
-        if len(self.lineCnt) == 0:  # 첫 번째 텍스트 라인 모드 체크
-            self.lineCnt.append(self.nextNumOfBtnMode(0))
-        try:
-            if boolean:
-                self.btn[self.lineCnt[0]].copyText()
-                self.btn[self.lineCnt[0]].pasteTextPSMode()
+        이 옵션이 꺼져 있으면 포토샵 모드가 제대로 동작하지 않는다.
+        자세한 이유는 SB2T/ps_notify.py의 read_placeholder_pref 참고.
+        """
+        if self.skipPlaceholderNotice:
+            return
+        enabled = read_placeholder_pref(self.ps_app)
+        if enabled is None:
+            # 조회 자체가 안 되면 안내할 근거가 없다. 다만 조용히 묻히면
+            # '왜 안내가 안 뜨지'로 헤매게 되므로 흔적은 남긴다.
+            self.statusbarmain.showMessage(
+                "포토샵 문자 설정을 확인하지 못했습니다.", 5000)
+            return
+        if enabled:
+            return  # 이미 켜져 있으면 안내할 필요가 없다
+
+        box = QMessageBox(self)
+        box.setWindowTitle('포토샵 설정 안내')
+        box.setIcon(QMessageBox.Information)
+        box.setText(
+            "포토샵의 '자리 표시자 텍스트로 새로운 유형 레이어 채우기'가\n"
+            "꺼져 있습니다.")
+        box.setInformativeText(
+            "이 옵션이 꺼져 있으면 두 가지 문제가 생깁니다.\n\n"
+            " · 빈 텍스트 박스를 Esc로 닫으면 포토샵이 그 레이어를 지워버려서\n"
+            "   대사가 들어가지 않습니다. (Ctrl+Enter로 닫으면 됩니다)\n"
+            " · 작업 중이던 글꼴과 크기가 유지되지 않고 기본값으로 바뀝니다.\n\n"
+            "지금 켜드릴까요?\n"
+            "나중에 [편집 > 환경 설정 > 문자]에서 되돌릴 수 있습니다.")
+        skip = QCheckBox('다시 보지 않기')
+        box.setCheckBox(skip)
+        turnOn = box.addButton('지금 켜기', QMessageBox.AcceptRole)
+        box.addButton('그냥 진행', QMessageBox.RejectRole)
+        box.exec_()
+
+        if skip.isChecked():
+            self.skipPlaceholderNotice = 1
+            self.advSettingsList[13] = 1
+
+        if box.clickedButton() is turnOn:
+            err = set_placeholder_pref(self.ps_app, True)
+            if err:
+                QMessageBox.warning(
+                    self, "설정 실패",
+                    "옵션을 켜지 못했습니다.\n"
+                    "포토샵의 [편집 > 환경 설정 > 문자]에서 직접 켜주세요.\n\n"
+                    + err)
             else:
-                self.resetForProgramError('')
-        except:
-            self.psAutoStartAction.toggle()
-            self.psMode.toggle()
-            self.psAutoStart()
-            self.statusbarmain.showMessage("마지막 텍스트를 붙여넣었습니다!", 5000)
+                self.statusbarmain.showMessage(
+                    "자리 표시자 텍스트 옵션을 켰습니다.", 5000)
+
+    def psAutoThreadStart(self):
+        """포토샵 모드 시작 함수 (알림 등록 + 감시 스레드)"""
+        self.psAutoThreadStop()
+        self.checkPlaceholderPref()
+
+        err = install_notifier(self.ps_app)
+        if err:
+            QMessageBox.warning(self, "포토샵 연동 실패", err)
+            if self.psAutoStartAction.isChecked():
+                self.psAutoStartAction.setChecked(False)
+                self.psMode.setChecked(False)
+            return
+
+        self.psThreadfunc = StartPsThread(self)
+        self.psThreadfunc.psTextLayerCreated.connect(self.psFillTextLayer)
+        self.psThreadfunc.start()
+
+    def psAutoThreadStop(self):
+        """포토샵 모드 정리 함수 (감시 스레드 + 알림 해제)"""
+        if self.psThreadfunc is not None and self.psThreadfunc.isRunning():
+            self.psThreadfunc.stop()
+            self.psThreadfunc.wait(1000)
+            if self.psThreadfunc.isRunning():
+                self.psThreadfunc.terminate()
+                self.psThreadfunc.wait()
+        if self.ps_app is not None:
+            uninstall_notifier(self.ps_app)
+
+    @pyqtSlot()
+    def psFillTextLayer(self):
+        """새 텍스트 레이어가 만들어졌을 때 대사를 채워넣는 함수
+
+        알림이 온 시점에는 레이어가 이미 확정된 상태다. 편집 중이 아니므로
+        COM으로 바로 내용을 넣을 수 있다. 키 입력이나 클립보드를 거치지
+        않으니 타이밍 문제가 없다.
+        """
+        if len(self.btn) == 0 or self.ps_app is None:
+            return
+        if len(self.lineCnt) == 0:  # 첫 번째 텍스트 라인 모드 체크
+            temp = self.nextNumOfBtnMode(0)
+            if temp == -1:
+                return
+            self.btn[temp].copyText()
+        if len(self.lineCnt) == 0:
+            return
+
+        try:
+            item = self.ps_app.ActiveDocument.ActiveLayer.textItem
+        except Exception:
+            return  # 텍스트 레이어가 아니거나 아직 읽을 수 없는 상태
+
+        if not self.isFillableTextItem(item):
+            return
+
+        try:
+            item.contents = self.btn[self.lineCnt[0]].getAllCopiableTxt()
+        except Exception as e:
+            self.statusbarmain.showMessage("붙여넣기 실패: " + str(e), 5000)
+            return
+
+        self.btn[self.lineCnt[0]].setTraceTextLine()
+        self.resetRecord.setEnabled(True)
+        self.nextLineCopy()
+
+    def isFillableTextItem(self, item) -> bool:
+        """채워도 되는 (비어 있거나 자리 표시자인) 텍스트인지 확인하는 함수
+
+        사용자가 직접 입력한 글자를 덮어쓰지 않기 위한 검사다.
+        """
+        try:
+            contents = item.contents
+        except Exception:
+            return True  # 못 읽으면 빈 레이어로 본다
+        if not contents or not contents.strip():
+            return True
+        return 'Lorem ipsum' in contents or 'Lorem Ipsum' in contents
 
     def nextNumOfBtnMode(self, n) -> int:
         """다음 기본 모드 텍스트 라인의 인덱스를 반환하는 함수"""
@@ -1158,6 +1380,17 @@ class MainApp(QMainWindow):
                 return self.nextNumOfBtnMode(n + 1)
         except:
             return -1  # 마지막 줄이었단 뜻
+
+    def prevNumOfBtnMode(self, n) -> int:
+        """이전 기본 모드 텍스트 라인의 인덱스를 반환하는 함수"""
+        while n >= 0:
+            try:
+                if self.btn[n].mode:
+                    return n
+            except IndexError:
+                return -1
+            n -= 1
+        return -1  # 첫 번째 줄이었단 뜻
 
     def nextLineCopy(self):
         """다음 텍스트 라인 복사하기 (기본 버튼 모드만 적용)"""
@@ -1175,9 +1408,71 @@ class MainApp(QMainWindow):
         else:
             self.btn[temp].copyText()
 
+    @pyqtSlot()
+    def prevLineCopy(self):
+        """이전 텍스트 라인 복사하기 (기본 버튼 모드만 적용)"""
+        if len(self.btn) == 0:
+            return
+        if len(self.lineCnt) == 0:
+            return
+        # 묶음일 경우 묶음의 첫 줄 기준으로 그 앞을 찾는다
+        temp = self.prevNumOfBtnMode(self.lineCnt[0] - 1)
+        if temp == -1:
+            self.statusbarmain.showMessage("첫 번째 텍스트입니다.", 5000)
+        else:
+            self.btn[temp].copyText()
+
+    @pyqtSlot()
+    def nextLineCopyByHotkey(self):
+        """(단축키) 다음 텍스트 라인 복사하기"""
+        if len(self.btn) == 0:
+            return
+        if len(self.lineCnt) == 0:
+            temp = self.nextNumOfBtnMode(0)
+            if temp != -1:
+                self.btn[temp].copyText()
+            return
+        self.nextLineCopy()
+
+    @pyqtSlot()
+    def recopyCurrentLine(self):
+        """(단축키) 현재 텍스트 라인을 다시 복사하기
+
+        붙여넣기가 씹혔을 때 되돌아오지 않고 그 자리에서 재시도할 수 있다.
+        """
+        if len(self.btn) == 0 or len(self.lineCnt) == 0:
+            return
+        self.btn[self.lineCnt[0]].copyText()
+        self.statusbarmain.showMessage("현재 텍스트를 다시 복사했습니다.", 3000)
+
+    def startHotkeyThread(self):
+        """대사 이동 전역 단축키 스레드를 (재)시작하는 함수"""
+        self.stopHotkeyThread()
+        nextKey = build_hotkey(self.hotkeyNext)
+        prevKey = build_hotkey(self.hotkeyPrev)
+        recopyKey = build_hotkey(self.hotkeyRecopy)
+        if not (nextKey or prevKey or recopyKey):
+            return  # 지정된 단축키가 하나도 없으면 굳이 띄우지 않는다
+        self.hotkeyThread = GlobalHotkey(self, nextKey, prevKey, recopyKey)
+        self.hotkeyThread.nextLineSignal.connect(self.nextLineCopyByHotkey)
+        self.hotkeyThread.prevLineSignal.connect(self.prevLineCopy)
+        self.hotkeyThread.recopyLineSignal.connect(self.recopyCurrentLine)
+        self.hotkeyThread.start()
+
+    def stopHotkeyThread(self):
+        """대사 이동 전역 단축키 스레드를 정리하는 함수"""
+        if self.hotkeyThread is not None and self.hotkeyThread.isRunning():
+            self.hotkeyThread.disconnect()
+            self.hotkeyThread.terminate()
+            self.hotkeyThread.wait()
+
     def setMacroDialog(self):
         """매크로 설정 창 생성 함수"""
         dialog = MacroSetDialog(self)
+
+    def setHotkeyDialog(self):
+        """대사 이동 단축키 설정 창 생성 함수"""
+        dialog = HotkeySetDialog(self)
 
     def setSymbolDialog(self):
         """특수문자 설정 창 생성 함수"""
@@ -1399,8 +1694,7 @@ class MainApp(QMainWindow):
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
         if reply == QMessageBox.Yes:
-            if self.psThreadfunc.isRunning():
-                self.psThreadfunc.terminate()
+            self.psAutoThreadStop()
             if self.ctrlVThread.isRunning():
                 self.ctrlVThread.disconnect()
                 self.ctrlVThread.terminate()
@@ -1456,8 +1750,7 @@ class MainApp(QMainWindow):
 
     def resetForProgramError(self, e):
         """지정된 프로그램에 문제가 생겼을 시 실행되는 함수"""
-        if self.psThreadfunc.isRunning():
-            self.psThreadfunc.terminate()
+        self.psAutoThreadStop()
         if self.psAutoStartAction.isChecked():
             self.psAutoStartAction.toggle()
             self.psMode.toggle()
@@ -1531,14 +1824,14 @@ class MainApp(QMainWindow):
         self.textfindwindow.close()
         self.textchangewindow.close()
 
-        if self.psThreadfunc.isRunning():  # PS 모드 스레드 체크
-            self.psThreadfunc.terminate()
-            self.psThreadfunc.wait()
+        self.psAutoThreadStop()  # PS 모드 감시 스레드 + 포토샵 알림 정리
 
         if self.ctrlVThread.isRunning():
             self.ctrlVThread.disconnect()  # Ctrl+V 모드 스레드 체크
             self.ctrlVThread.terminate()
             self.ctrlVThread.wait()
+
+        self.stopHotkeyThread()  # 대사 이동 단축키 스레드 체크
 
         if self.bmkThread.isRunning():  # 북마크 스레드 체크
             self.bmkThread.terminate()
@@ -1567,10 +1860,16 @@ class MainApp(QMainWindow):
         """(종료 이벤트 시) 설정을 저장하는 함수"""
         self.settings.setValue("NotFirstStart", self.notFirstStart)
         self.settings.setValue("WindowSize", self.size())
-        self.settings.setValue("windowPosition", self.pos())
+        self.settings.setValue("WindowPosition", self.pos())
         self.settings.setValue("LastFont", self.font)
         self.settings.setValue("State", self.saveState())
         self.settings.setValue("AdvSettings", self.advSettingsList)
+        self.settings.setValue("HotkeyNext1", self.hotkeyNext[0])
+        self.settings.setValue("HotkeyNext2", self.hotkeyNext[1])
+        self.settings.setValue("HotkeyPrev1", self.hotkeyPrev[0])
+        self.settings.setValue("HotkeyPrev2", self.hotkeyPrev[1])
+        self.settings.setValue("HotkeyRecopy1", self.hotkeyRecopy[0])
+        self.settings.setValue("HotkeyRecopy2", self.hotkeyRecopy[1])
         self.settings.setValue("MacroList", self.macroList)
         self.settings.setValue("SymbolList", self.symbolList)
         self.settings.setValue("TextItemsSettings", self.textItemStyleList)

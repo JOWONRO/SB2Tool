@@ -6,10 +6,13 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QGridLayout,
     QCheckBox,
-    QGroupBox
+    QGroupBox,
+    QSpinBox
 )
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
+
+from SB2T.constants import CTRLV_DELAY_MAX, CTRLV_DELAY_MIN
 
 
 class AdvSettingsDialog(QDialog):
@@ -80,8 +83,28 @@ class AdvSettingsDialog(QDialog):
         self.pastecheckbox1.setChecked(self.parent.pasteCtrlEnter)
         self.pastecheckbox1.stateChanged.connect(self.setpasteCtrlEnter)
 
+        self.ctrlVDelayLabel = QLabel('Ctrl+V 모드 대기시간: ')
+        self.ctrlVDelaySpin = QSpinBox()
+        self.ctrlVDelaySpin.setRange(CTRLV_DELAY_MIN, CTRLV_DELAY_MAX)
+        self.ctrlVDelaySpin.setSingleStep(50)
+        self.ctrlVDelaySpin.setSuffix(' ms')
+        self.ctrlVDelaySpin.setValue(self.parent.ctrlVDelay)
+        self.ctrlVDelaySpin.valueChanged.connect(self.setCtrlVDelay)
+        self.ctrlVDelayDesc = QLabel(
+            '붙여넣기 후 다음 대사를 복사하기까지 기다리는 시간입니다.\n'
+            '대사가 씹히거나 건너뛰어진다면 값을 올려보세요.\n'
+            '(클립스튜디오처럼 붙여넣기가 느린 프로그램은 200ms 이상 권장)')
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.ctrlVDelayLabel)
+        hbox.addWidget(self.ctrlVDelaySpin)
+        hbox.addStretch(1)
+
         vbox = QVBoxLayout()
         vbox.addWidget(self.pastecheckbox1)
+        vbox.addStretch(1)
+        vbox.addLayout(hbox)
+        vbox.addWidget(self.ctrlVDelayDesc)
         vbox.addStretch(1)
         groupbox.setLayout(vbox)
 
@@ -109,6 +132,12 @@ class AdvSettingsDialog(QDialog):
         self.uicheckbox4 = QCheckBox("실행 시 창을 항상 위에 고정 (다음 실행 때 반영)")
         self.uicheckbox4.setChecked(self.parent.onTopDefault)
         self.uicheckbox4.stateChanged.connect(self.setOnTopDefault)
+        self.uicheckbox5 = QCheckBox("포토샵 연동 사용 (다음 실행 때 반영)")
+        self.uicheckbox5.setToolTip(
+            '포토샵 모드와 태그별 문자 설정을 사용합니다.\n'
+            '포토샵을 쓰지 않거나 프로그램 지정이 느리다면 꺼두세요.')
+        self.uicheckbox5.setChecked(self.parent.psIntegration)
+        self.uicheckbox5.stateChanged.connect(self.setPsIntegration)
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.subtitle1)
@@ -122,6 +151,7 @@ class AdvSettingsDialog(QDialog):
         vbox.addWidget(self.space)
         vbox.addWidget(self.subtitle3)
         vbox.addWidget(self.uicheckbox4)
+        vbox.addWidget(self.uicheckbox5)
         vbox.addStretch(1)
         groupbox.setLayout(vbox)
 
@@ -198,4 +228,17 @@ class AdvSettingsDialog(QDialog):
         else:
             self.parent.onTopDefault = 0
         self.parent.advSettingsList[8] = self.parent.onTopDefault
+
+    def setCtrlVDelay(self):
+        """Ctrl+V 모드 대기시간 설정 함수"""
+        self.parent.ctrlVDelay = self.ctrlVDelaySpin.value()
+        self.parent.advSettingsList[9] = self.parent.ctrlVDelay
+
+    def setPsIntegration(self):
+        """포토샵 연동 사용 여부 함수"""
+        if self.uicheckbox5.isChecked():
+            self.parent.psIntegration = 1
+        else:
+            self.parent.psIntegration = 0
+        self.parent.advSettingsList[10] = self.parent.psIntegration
 

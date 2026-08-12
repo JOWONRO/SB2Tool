@@ -61,3 +61,13 @@
 - 주석 폰트 -> 이탤릭체로 변경
 - 책갈피 기능 추가 -> 한 개 책갈피만 가능, 책갈피가 있는 파일을 불러올 경우 자동으로 책갈피가 있는 라인으로 이동.
 - 종료 확인창 삭제
+
+## pip install
+
+- pyqt5
+- psutil
+- pywin32
+- keyboard
+- pyautogui
+- clipboard
+- photoshop_python_api

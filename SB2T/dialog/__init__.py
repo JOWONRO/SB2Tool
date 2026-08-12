@@ -1,4 +1,5 @@
 from .adv_settings import AdvSettingsDialog
+from .hotkey_settings import HotkeySetDialog
 from .loading import LoadingDialog
 from .macro_settings import MacroSetDialog
 from .symbol_add import SymbolAddDialog
@@ -12,6 +13,7 @@ from .textItem_style import TextItemStyleDialog
 __all__ = [
     'TextEditDialog',
     'AdvSettingsDialog',
+    'HotkeySetDialog',
     'LoadingDialog',
     'MacroSetDialog',
     'SymbolAddDialog',
