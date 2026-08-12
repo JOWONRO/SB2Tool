@@ -4,9 +4,13 @@ block_cipher = None
 
 
 a = Analysis(['SB2Tool.py'],
-             pathex=['D:\\coding\\git\\SB2Tool'],
+             # 절대경로를 박아두면 다른 PC에서 빌드할 때 깨진다.
+             # (5.0 전에는 'D:\coding\git\SB2Tool'로 고정돼 있었다)
+             pathex=[],
              binaries=[],
-             datas=[],
+             # 아이콘을 번들에 포함시킨다. 예전에는 datas가 비어 있어서
+             # 빌드 후 dist\SB2Tool\icons\ 에 손으로 복사해야 했다.
+             datas=[('icons', 'icons')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
@@ -27,7 +31,7 @@ exe = EXE(pyz,
           strip=False,
           upx=True,
           console=False,
-          icon='D:\\coding\\git\\SB2Tool\\favicon.ico')
+          icon='icons/new_logo.ico')
 coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,

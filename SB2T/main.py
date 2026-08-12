@@ -1,13 +1,9 @@
-import time
 from multiprocessing import Process
 from os.path import basename, exists
 from re import match
 
-import photoshop.api as ps
 import pythoncom
-import win32com.client
 from clipboard import copy, paste
-from psutil import Process as Prcss
 from pyautogui import getAllTitles, getWindowsWithTitle, hotkey
 from PyQt5.QtCore import QSettings, Qt, QTimer, pyqtSlot
 from PyQt5.QtGui import QFont, QIcon
@@ -17,11 +13,9 @@ from PyQt5.QtWidgets import (QAction, QApplication, QCheckBox, QDialog,
                              QScrollArea, QStatusBar, QToolBar, QVBoxLayout,
                              QWidget)
 from win32gui import SetForegroundWindow
-from win32process import GetWindowThreadProcessId
 
 from SB2T.dialog import (AdvSettingsDialog, HotkeySetDialog, MacroSetDialog,
-                         SymbolSetDialog, TextChangeDialog, TextFindDialog,
-                         TextItemStyleDialog)
+                         SymbolSetDialog, TextChangeDialog, TextFindDialog)
 from SB2T.obj import MacroStartwithProcess, TextLine
 from SB2T.thread import (CheckBmkThread, DetectCtrlV, GlobalHotkey,
                          StartPsThread, build_hotkey)
@@ -222,7 +216,7 @@ class MainApp(QMainWindow):
         self.setMainStatusbar()
 
         self.setWindowTitle('식붕이툴 ' + self.version)
-        self.setWindowIcon(QIcon('icons/sbticon.png'))
+        self.setWindowIcon(QIcon('icons/new_logo.ico'))
         self.setAcceptDrops(True)
         self.startHotkeyThread()  # 저장된 대사 이동 단축키 등록
         self.show()
@@ -259,10 +253,6 @@ class MainApp(QMainWindow):
         self.closeTool = QAction('종료(&X)', self)
         self.closeTool.triggered.connect(self.close)
         self.closeTool.setShortcut('Alt+F4')
-
-        self.setProgram = QAction('프로그램 지정(&P)', self)
-        self.setProgram.triggered.connect(self.setProgramForPaste)
-        self.setProgram.setShortcut('Ctrl+P')
 
         self.setMacro = QAction('매크로 설정(&M)', self)
         self.setMacro.triggered.connect(self.setMacroDialog)
@@ -318,30 +308,6 @@ class MainApp(QMainWindow):
         self.resetRecord.setShortcut('Del')
         self.resetRecord.setDisabled(True)
 
-        self.fiveUpEdit = QAction('다섯 줄 위로 건너뛰기(&Z)', self)
-        self.fiveUpEdit.triggered.connect(self.selUpFiveLine)
-        self.fiveUpEdit.setShortcut('Ctrl+A')
-        self.fiveUpEdit.setDisabled(True)
-
-        self.oneUpEdit = QAction('한 줄 위로 건너뛰기(&X)', self)
-        self.oneUpEdit.triggered.connect(self.selUpOneLine)
-        self.oneUpEdit.setShortcut('A')
-        self.oneUpEdit.setDisabled(True)
-
-        self.oneDownEdit = QAction('한 줄 아래로 건너뛰기(&V)', self)
-        self.oneDownEdit.triggered.connect(self.selDownOneLine)
-        self.oneDownEdit.setShortcut('D')
-        self.oneDownEdit.setDisabled(True)
-
-        self.fiveDownEdit = QAction('다섯 줄 아래로 건너뛰기(&B)', self)
-        self.fiveDownEdit.triggered.connect(self.selDownFiveLine)
-        self.fiveDownEdit.setShortcut('Ctrl+D')
-        self.fiveDownEdit.setDisabled(True)
-
-        self.pasteEdit = QAction('붙여넣기(&C)', self)
-        self.pasteEdit.triggered.connect(self.pasteLine)
-        self.pasteEdit.setShortcut('S')
-        self.pasteEdit.setDisabled(True)
 
         self.linkEdit = QAction('모든 묶음 활성화(&L)', self)
         self.linkEdit.triggered.connect(self.setLinkAll)
@@ -403,7 +369,6 @@ class MainApp(QMainWindow):
         self.fileMenu.addAction(self.closeTool)
 
         self.configMenu = self.menubar.addMenu('설정(&S)')
-        self.configMenu.addAction(self.setProgram)
         self.configMenu.addAction(self.setMacro)
         self.configMenu.addAction(self.setSymbol)
         self.configMenu.addAction(self.setHotkey)
@@ -419,13 +384,7 @@ class MainApp(QMainWindow):
         self.modeMenu.addAction(self.macroMode)
 
         self.editMenu = self.menubar.addMenu('편집(&E)')
-        self.editMenu.addAction(self.pasteEdit)
         self.editMenu.addAction(self.resetRecord)
-        self.editMenu.addSeparator()
-        self.editMenu.addAction(self.fiveUpEdit)
-        self.editMenu.addAction(self.oneUpEdit)
-        self.editMenu.addAction(self.oneDownEdit)
-        self.editMenu.addAction(self.fiveDownEdit)
         self.editMenu.addSeparator()
         self.editMenu.addAction(self.linkEdit)
         self.editMenu.addAction(self.unlinkEdit)
@@ -464,12 +423,6 @@ class MainApp(QMainWindow):
             '파일 열기 ( Ctrl+O )\n복사를 진행할 텍스트 파일을 불러옵니다.\n자동 모드나 포토샵 모드가 켜져 있으면 비활성화됩니다.')
         self.fileOpenAction.triggered.connect(self.showFileDialog)
 
-        self.setProgramForPasteAction = QAction(
-            QIcon("icons/setpro.png"), 'ProgramSetting', self)
-        self.setProgramForPasteAction.setToolTip(
-            '프로그램 세팅 ( Ctrl+P )\n붙여넣기를 진행할 프로그램을 지정합니다.')
-        self.setProgramForPasteAction.triggered.connect(
-            self.setProgramForPaste)
 
         self.setMacroAction = QAction(
             QIcon('icons/setmacro.png'), 'setMacro', self)
@@ -561,7 +514,6 @@ class MainApp(QMainWindow):
         self.goBookmarkAction.setDisabled(True)
 
         self.toolbar.addAction(self.fileOpenAction)
-        self.toolbar.addAction(self.setProgramForPasteAction)
         # self.toolbar.addAction(self.psTISsettingsAction)
         self.toolbar.addAction(self.setMacroAction)
         self.toolbar.addSeparator()
@@ -754,10 +706,6 @@ class MainApp(QMainWindow):
         self.findEdit.setDisabled(True)
         self.changeEdit.setDisabled(True)
         self.chgTPEdit.setDisabled(True)
-        self.fiveUpEdit.setDisabled(True)
-        self.oneUpEdit.setDisabled(True)
-        self.oneDownEdit.setDisabled(True)
-        self.fiveDownEdit.setDisabled(True)
         self.changeFont.setDisabled(True)
         self.textfindwindow.close()
         self.textchangewindow.close()
@@ -836,10 +784,6 @@ class MainApp(QMainWindow):
     def setToolMenuAfterSetBtns(self):
         """버튼 배열로 scroll area 채우기 이후, 메뉴바와 툴바 세팅하는 함수"""
         if len(self.btn) > 0:
-            self.fiveUpEdit.setEnabled(True)
-            self.oneUpEdit.setEnabled(True)
-            self.fiveDownEdit.setEnabled(True)
-            self.oneDownEdit.setEnabled(True)
             self.textFindAction.setEnabled(True)
             self.textChangeAction.setEnabled(True)
             self.threePointChangeAction.setEnabled(True)
@@ -852,28 +796,19 @@ class MainApp(QMainWindow):
             self.chgTPEdit.setEnabled(True)
             self.changeFont.setEnabled(True)
             self.statusbarmain.showMessage("")
-            if self.ProgramSettingOn:
-                self.autoStartAction.setEnabled(True)
-                self.startMode.setEnabled(True)
-                if self.checkPhotoshop():
-                    self.psAutoStartAction.setEnabled(True)
-                    self.psMode.setEnabled(True)
-                    # self.psTISsettings.setEnabled(True)
-                    # self.psTISsettingsAction.setEnabled(True)
-                else:
-                    # self.psTISsettings.setDisabled(True)
-                    # self.psTISsettingsAction.setDisabled(True)
-                    self.psAutoStartAction.setDisabled(True)
-                    self.psMode.setDisabled(True)
-            else:
-                self.autoStartAction.setDisabled(True)
-                self.startMode.setDisabled(True)
-                # self.psTISsettings.setDisabled(True)
-                # self.psTISsettingsAction.setDisabled(True)
-                self.psAutoStartAction.setDisabled(True)
-                self.psMode.setDisabled(True)
+            # 5.0부터는 텍스트만 불러오면 모든 모드를 켤 수 있다.
+            # 준비물(붙여넣을 프로그램, 포토샵 연결)은 각 모드를 켜는
+            # 시점에 알아서 챙긴다. 미리 지정해 둘 필요가 없다.
+            self.autoStartAction.setEnabled(True)
+            self.startMode.setEnabled(True)
             self.ctrlVStartAction.setEnabled(True)
             self.ctrlVMode.setEnabled(True)
+            if self.psIntegration:
+                self.psAutoStartAction.setEnabled(True)
+                self.psMode.setEnabled(True)
+            else:
+                self.psAutoStartAction.setDisabled(True)
+                self.psMode.setDisabled(True)
             self.checkBookmark()
         else:   # 버튼이 하나도 없을 때는 세팅 ㄴㄴ
             self.statusbarmain.showMessage("빈 텍스트입니다.")
@@ -935,49 +870,24 @@ class MainApp(QMainWindow):
         self.setToolMenuAfterSetPrgm(item)
 
     def setToolMenuAfterSetPrgm(self, item):
-        """프로그램 지정 이후, 메뉴바와 툴바 세팅하는 함수"""
-        check = False
+        """프로그램 지정 결과를 반영하는 함수
+
+        5.0 전에는 이 함수가 모드 버튼들의 활성화까지 결정했다. 이제는
+        텍스트만 불러오면 모든 모드를 켤 수 있으므로, 지정 결과만 남긴다.
+        """
         if item == '선택 안 함':
             self.ProgramSettingOn = False
-            self.autoStartAction.setDisabled(True)
-            self.startMode.setDisabled(True)
-            # self.psTISsettings.setDisabled(True)
-            # self.psTISsettingsAction.setDisabled(True)
-            self.psAutoStartAction.setDisabled(True)
-            self.psMode.setDisabled(True)
-        else:
-            try:
-                self.selectedProgram = getWindowsWithTitle(item)[0]
-                check = True
-            except Exception as e:
-                self.resetForProgramError(str(e))
-            self.ProgramSettingOn = check
-            if check:
-                if self.checkPhotoshop():
-                    # self.psTISsettings.setEnabled(True)
-                    # self.psTISsettingsAction.setEnabled(True)
-                    if len(self.btn) != 0:
-                        self.autoStartAction.setEnabled(True)
-                        self.startMode.setEnabled(True)
-                        self.psAutoStartAction.setEnabled(True)
-                        self.psMode.setEnabled(True)
-                    else:
-                        self.autoStartAction.setDisabled(True)
-                        self.startMode.setDisabled(True)
-                        self.psAutoStartAction.setDisabled(True)
-                        self.psMode.setDisabled(True)
-                else:
-                    if len(self.btn) != 0:
-                        self.autoStartAction.setEnabled(True)
-                        self.startMode.setEnabled(True)
-                    else:
-                        self.autoStartAction.setDisabled(True)
-                        self.startMode.setDisabled(True)
-                    # self.psTISsettings.setDisabled(True)
-                    # self.psTISsettingsAction.setDisabled(True)
-                    self.psAutoStartAction.setDisabled(True)
-                    self.psMode.setDisabled(True)
-                self.statusbarmain.showMessage("프로그램 지정 완료", 5000)
+            return
+
+        try:
+            self.selectedProgram = getWindowsWithTitle(item)[0]
+        except Exception as e:
+            self.ProgramSettingOn = False
+            self.resetForProgramError(str(e))
+            return
+
+        self.ProgramSettingOn = True
+        self.statusbarmain.showMessage("프로그램 지정 완료", 5000)
 
     def advSettingsDialogShow(self):
         """고급 설정 창 생성 함수"""
@@ -987,67 +897,6 @@ class MainApp(QMainWindow):
     #     """대사별 포토샵 문자 설정 창 생성 함수"""
     #     dialog = TextItemStyleDialog(self)
 
-    def checkPhotoshop(self) -> bool:
-        """지정된 프로그램이 포토샵인지 확인하는 함수
-
-        Beta4.0까지는 이 함수가 ps.Application() COM 연결까지 같이 했다.
-        포토샵이 바쁘면 COM 호출이 RPC 타임아웃까지 블로킹되는데, 이걸 UI
-        스레드에서 부르는 바람에 '프로그램 지정 후 30초 먹통' 증상이 났다.
-        (라임 님 제보) 게다가 프로그램을 지정할 때마다, Ctrl+V 모드를 끌 때마다
-        호출돼서 포토샵 모드를 안 쓰는 사람도 매번 그 비용을 냈다.
-
-        그래서 5.0부터는 여기서 '프로세스 이름 검사'만 한다.
-        실제 COM 연결은 포토샵 모드를 켜는 시점에 ensurePsApp()이 맡는다.
-        """
-        if not self.psIntegration:
-            return False  # 고급 설정에서 포토샵 연동을 꺼둔 경우
-
-        check = False
-        test = True
-        try:
-            threadid, pid = GetWindowThreadProcessId(
-                self.selectedProgram._hWnd)
-            if 'Photoshop' in Prcss(pid).name():
-                check = True
-            test = False
-            # temp = win32com.client.GetActiveObject("Photoshop.Application")  # 포토샵 앱 불러오기
-            # 여러 변수를 고려하여 포토샵이 실행만 되어 있으면 활성화되는 것으로 변경
-            # if "Photoshop" in self.selectedProgramTitle:
-            #     check = True
-            # else:
-            #     try:
-            #         docname = temp.Application.ActiveDocument.name
-            #         if docname in self.selectedProgramTitle:
-            #             check = True
-            #         else:
-            #             try:
-            #                 layername = temp.Application.ActiveDocument.ActiveLayer.name
-            #                 if layername in self.selectedProgramTitle:
-            #                     check = True
-            #             except:
-            #                 QMessageBox.warning(self, "포토샵 모드 오류",
-            #                 "레이어를 닫은 다음에\n다시 지정해 주세요.")
-            #     except:
-            #         QMessageBox.warning(self, "포토샵 모드 오류",
-            #         "레이어를 닫은 다음에\n다시 지정해 주세요.")
-        except Exception as e:
-            QMessageBox.warning(self, "오류",
-                                "프로세스 체크 오류!\n" + str(e))
-
-        if test:
-            # 창 핸들로 프로세스를 못 잡은 경우에만 COM으로 확인한다.
-            # GetActiveObject는 '이미 실행 중인' 인스턴스만 찾으므로
-            # 새 포토샵을 띄우느라 멎는 일은 없다.
-            pythoncom.CoInitialize()
-            try:
-                temp = win32com.client.GetActiveObject("Photoshop.Application")
-                check = True
-            except Exception as e:
-                QMessageBox.warning(self, "오류",
-                                    "포토샵 체크 오류!\n자동 모드는 가능합니다.\n" + str(e))
-            pythoncom.CoUninitialize()
-
-        return check
 
     def ensurePsApp(self) -> bool:
         """포토샵 COM 객체를 (필요할 때) 연결하는 함수
@@ -1132,19 +981,22 @@ class MainApp(QMainWindow):
         self.autoStart()
 
     def autoStart(self):
-        """자동 모드 시작 함수"""
+        """자동 모드 시작 함수
+
+        자동 모드는 붙여넣을 프로그램을 알아야 동작한다. 5.0부터는 별도의
+        '프로그램 지정' 메뉴를 두지 않고, 모드를 켜는 이 시점에 물어본다.
+        지정하지 않으면 모드를 켤 수 없으므로 토글을 되돌린다.
+        """
         if self.autoStartAction.isChecked():
-            self.setProgramForPasteAction.setDisabled(True)
-            self.setProgram.setDisabled(True)
-            # self.psTISsettings.setDisabled(True)
-            # self.psTISsettingsAction.setDisabled(True)
+            if not self.ProgramSettingOn:
+                self.setProgramForPaste()
+            if not self.ProgramSettingOn:   # 취소했거나 지정에 실패한 경우
+                self.autoStartAction.setChecked(False)
+                self.startMode.setChecked(False)
+                self.statusbarmain.showMessage("프로그램을 지정해야 자동 모드를 쓸 수 있습니다.", 5000)
+                return
             self.statusbarmain.showMessage("자동 모드 On")
         else:
-            if not self.psAutoStartAction.isChecked():
-                self.setProgramForPasteAction.setEnabled(True)
-                self.setProgram.setEnabled(True)
-                # self.psTISsettings.setEnabled(True)
-                # self.psTISsettingsAction.setEnabled(True)
             self.statusbarmain.showMessage("자동 모드 Off", 5000)
 
     def ctrlVStartByMenu(self):
@@ -1169,7 +1021,7 @@ class MainApp(QMainWindow):
             self.statusbarmain.showMessage("Ctrl+V 모드 On")
             self.startCtrlVMode()
         else:
-            if self.ProgramSettingOn and self.checkPhotoshop():
+            if len(self.btn) != 0 and self.psIntegration:
                 self.psAutoStartAction.setEnabled(True)
                 self.psMode.setEnabled(True)
             self.statusbarmain.showMessage("Ctrl+V 모드 Off", 5000)
@@ -1222,8 +1074,6 @@ class MainApp(QMainWindow):
                 self.psAutoStartAction.setChecked(False)
                 self.psMode.setChecked(False)
                 return
-            self.setProgramForPasteAction.setDisabled(True)
-            self.setProgram.setDisabled(True)
             self.ctrlVStartAction.setDisabled(True)
             self.ctrlVMode.setDisabled(True)
             # self.psTISsettings.setDisabled(True)
@@ -1232,11 +1082,6 @@ class MainApp(QMainWindow):
             self.psAutoThreadStart()
         else:
             self.psAutoThreadStop()
-            if not self.autoStartAction.isChecked():
-                self.setProgramForPasteAction.setEnabled(True)
-                self.setProgram.setEnabled(True)
-                # self.psTISsettings.setEnabled(True)
-                # self.psTISsettingsAction.setEnabled(True)
             self.ctrlVStartAction.setEnabled(True)
             self.ctrlVMode.setEnabled(True)
             self.statusbarmain.showMessage("포토샵 모드 Off", 5000)
@@ -1519,11 +1364,6 @@ class MainApp(QMainWindow):
         self.lineCnt.clear()
         self.lineCntBack.clear()
         self.lineStatus.setText(" 줄  ")
-        self.pasteEdit.setDisabled(True)
-        self.fiveUpEdit.setDisabled(True)
-        self.oneUpEdit.setDisabled(True)
-        self.oneDownEdit.setDisabled(True)
-        self.fiveDownEdit.setDisabled(True)
         # self.resetRecordAction.setDisabled(True)
         self.resetRecord.setDisabled(True)
 
@@ -1613,50 +1453,6 @@ class MainApp(QMainWindow):
 
         self.checkSameOfAllString()
 
-    def selUpFiveLine(self):
-        """다섯 줄 위 텍스트 선택하는 함수"""
-        num = self.lineCnt[0]
-        i = 0
-        while i < 5:
-            num -= 1
-            if self.btn[num].mode == 1:
-                i += 1
-                if self.btn[num].act_connection == 1:
-                    num = self.btn[num].head
-        self.btn[num].copyText()
-
-    def selUpOneLine(self):
-        """한 줄 위 텍스트 선택하는 함수"""
-        num = self.lineCnt[0]
-        num -= 1
-        while self.btn[num].mode != 1:
-            num -= 1
-        self.btn[num].copyText()
-
-    def pasteLine(self):
-        """붙여넣기 함수"""
-        self.btn[self.lineCnt[0]].pasteText()
-
-    def selDownOneLine(self):
-        """한 줄 아래 텍스트 선택하는 함수"""
-        num = self.lineCnt[-1]
-        num = (num + 1) % len(self.btn)
-        while self.btn[num].mode != 1:
-            num = (num + 1) % len(self.btn)
-        self.btn[num].copyText()
-
-    def selDownFiveLine(self):
-        """다섯 줄 아래 텍스트 선택하는 함수"""
-        num = self.lineCnt[-1]
-        i = 0
-        while i < 5:
-            num = (num + 1) % len(self.btn)
-            if self.btn[num].mode == 1:
-                i += 1
-                if self.btn[num].act_connection == 1:
-                    while self.btn[num].connected_mode != 2:
-                        num = (num + 1) % len(self.btn)
-        self.btn[num].copyText()
 
     def textFind(self):
         """찾기 창 생성 함수"""
@@ -1757,19 +1553,21 @@ class MainApp(QMainWindow):
         if self.autoStartAction.isChecked():
             self.autoStartAction.toggle()
             self.startMode.toggle()
-        self.psAutoStartAction.setDisabled(True)
-        self.psMode.setDisabled(True)
-        # self.psTISsettings.setDisabled(True)
-        # self.psTISsettingsAction.setDisabled(True)
-        self.autoStartAction.setDisabled(True)
-        self.startMode.setDisabled(True)
+
+        # 모드 버튼은 잠그지 않는다. 지정이 풀렸을 뿐이고, 자동 모드를 다시
+        # 켜면 그때 지정 창이 뜬다. (5.0 전에는 '프로그램 지정' 메뉴로
+        # 다시 켜야 했지만 그 메뉴가 없어졌다)
+        hasText = len(self.btn) != 0
+        self.autoStartAction.setEnabled(hasText)
+        self.startMode.setEnabled(hasText)
+        self.psAutoStartAction.setEnabled(hasText and bool(self.psIntegration))
+        self.psMode.setEnabled(hasText and bool(self.psIntegration))
+
         self.ProgramSettingOn = False
         self.selectedProgramTitle = '선택 안 함'
         self.setProgramStatus.setText(' 지정: 선택 안 함 ')
         self.fileOpenAction.setEnabled(True)
-        self.setProgramForPasteAction.setEnabled(True)
         self.fileMenu.setEnabled(True)
-        self.setProgram.setEnabled(True)
         self.textfindwindow.close()
         self.textchangewindow.close()
         self.resetAllRecord()

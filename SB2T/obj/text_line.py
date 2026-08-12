@@ -428,8 +428,6 @@ class TextLine(QPushButton):
         self.parent.lineCnt.append(self.num)
         self.autoScroll(self.num)
         self.cleanToggle()
-        if self.parent.ProgramSettingOn:
-            self.parent.pasteEdit.setEnabled(True)
 
     def copyConnectedLines(self):
         """연결된 모든 줄을 한꺼번에 복사하는 함수"""
@@ -438,8 +436,6 @@ class TextLine(QPushButton):
         self.parent.lineStatus.setText(' 줄 ' + str(self.num + 1) + '  ')
         self.autoScroll(self.parent.lineCnt[-1])
         self.cleanToggle()
-        if self.parent.ProgramSettingOn:
-            self.parent.pasteEdit.setEnabled(True)
 
     def autoScroll(self, num):
         """텍스트 클릭, 혹은 텍스트 선택 변경 시 보기 편하게 자동으로 스크롤 해주는 함수"""
@@ -492,7 +488,6 @@ class TextLine(QPushButton):
         self.parent.windowFocus()
         hotkey('ctrl', 'v')
         self.setUncheckedAfterPaste()
-        self.parent.pasteEdit.setDisabled(True)
         if self.parent.psAutoStartAction.isEnabled():
             if self.attribute != 'none' and self.parent.currentTextItemStyle != None:
                 hotkey('ctrl', 'enter')
