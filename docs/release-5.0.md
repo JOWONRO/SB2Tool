@@ -72,7 +72,14 @@ type nul > dist\SB2Tool\tcl\dummy.txt
 type nul > dist\SB2Tool\tk\dummy.txt
 ```
 
+- [ ] **글꼴이 번들에 들어갔는지** — `dist\SB2Tool\fonts\` 에 otf 2개와
+      `LICENSE.txt`가 있어야 한다. Pretendard는 SIL OFL 1.1이라 배포는
+      자유롭지만 **라이선스 전문을 함께 배포해야 한다.**
+- [ ] 빌드본에서 `설정 > 정보` 등 창 글꼴이 굴림이 아닌지 (번들 글꼴 인식 확인)
 - [ ] `dist\SB2Tool\SB2Tool.exe` 실행 → 정상 동작 확인
+
+> 글꼴 때문에 설치파일이 약 7MB 늘어난다. 줄이려면 Bold를 빼면 되지만
+> (Qt가 가짜 굵기를 만들어 쓴다) 품질이 떨어진다.
 
 > **선택 사항**: `.spec`의 `excludes`에 `'tkinter', '_tkinter'`를 넣으면
 > 위 더미 작업 자체가 없어진다. 다만 pyautogui 의존성을 건드리는 거라

@@ -24,6 +24,7 @@ from SB2T.constants import (ADV_SETTINGS_DEFAULT, CTRLV_DELAY_MAX,
 from SB2T.ps_connect import connect_photoshop
 from SB2T.ps_notify import (install_notifier, read_placeholder_pref,
                             set_placeholder_pref, uninstall_notifier)
+from SB2T.ui_font import make_ui_font
 from SB2T.version import __version__
 
 
@@ -35,6 +36,8 @@ class MainApp(QMainWindow):
         super().__init__(None, Qt.WindowStaysOnTopHint)
         self.settings = QSettings("RingNebula", "SB2Tool")
         self.version = __version__
+        # 실제 값은 checkLastSettings()에서 정해진다.
+        # (저장된 글꼴이 있으면 그것, 없으면 ui_font가 고른 기본 글꼴)
         self.font = QFont()
         self.toolbar = QToolBar("기본 툴바")
         self.addToolBar(Qt.LeftToolBarArea, self.toolbar)
@@ -112,6 +115,7 @@ class MainApp(QMainWindow):
             self.notFirstStart = True
             self.textItemStyleList = []
             self.currentTextItemStyle = None
+            self.font = make_ui_font()
         else:
             try:
                 self.resize(self.settings.value("WindowSize"))
@@ -177,10 +181,13 @@ class MainApp(QMainWindow):
                 self.hotkeyPrev = ['', '']
                 self.hotkeyRecopy = ['', '']
             try:
-                self.font = self.settings.value("LastFont")
+                saved = self.settings.value("LastFont")
+                # 저장된 값이 없으면 None이 온다. 그대로 두면 텍스트 라인에
+                # 글꼴이 적용되지 않아 한글이 굴림으로 폴백된다.
+                self.font = saved if isinstance(saved, QFont) else make_ui_font()
             except Exception as e:
                 QMessageBox.warning(self, "오류", "폰트 설정에 실패했습니다.\n" + str(e))
-                self.font.setFamily("Malgun Gothic")
+                self.font = make_ui_font()
             if not self.onTopDefault:
                 self.setWindowFlag(Qt.WindowStaysOnTopHint, False)
 
