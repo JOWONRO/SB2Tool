@@ -8,11 +8,11 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QComboBox
 )
-from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 
 from SB2T.obj import AttributeOfTextItem
 from .attributes_settings import SetAttributeDialog
+from SB2T.resources import icon
 
 
 class TextItemStyleDialog(QDialog):
@@ -69,7 +69,7 @@ class TextItemStyleDialog(QDialog):
 
         self.setLayout(grid)
         self.setWindowTitle('포토샵 전용 문자 설정')
-        self.setWindowIcon(QIcon("icons/setpsmode.png"))
+        self.setWindowIcon(icon('setpsmode.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()
         self.move(x + 30, y + 100)
         self.exec()

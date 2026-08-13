@@ -12,11 +12,12 @@ from PyQt5.QtWidgets import (
     QFontComboBox,
     QSpinBox
 )
-from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
 
 from SB2T.obj import AttributeOfTextItem
 from .loading import LoadingDialog
+from SB2T.resources import icon
 
 
 class SetAttributeDialog(QDialog):
@@ -78,7 +79,7 @@ class SetAttributeDialog(QDialog):
         vbox.addLayout(layer2)
 
         self.setLayout(vbox)
-        self.setWindowIcon(QIcon('icons/setpsmode.png'))
+        self.setWindowIcon(icon('setpsmode.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()
         self.move(x - 50, y + 100)
         if self.selectedTIS == 'none':
@@ -210,11 +211,11 @@ class SetAttributeGrid(QGridLayout):
         self.spbx_vscale.setDisabled(True)
 
         self.chk_style = QCheckBox('스타일:')
-        self.btn_bold = QPushButton(QIcon('icons/bold.png'), '', )
+        self.btn_bold = QPushButton(icon('bold.png'), '', )
         self.btn_bold.setToolTip('볼드체')
         self.btn_bold.setCheckable(True)
         self.btn_bold.setAutoDefault(False)
-        self.btn_italic = QPushButton(QIcon('icons/italic.png'), '', )
+        self.btn_italic = QPushButton(icon('italic.png'), '', )
         self.btn_italic.setToolTip('이탤릭체')
         self.btn_italic.setCheckable(True)
         self.btn_italic.setAutoDefault(False)

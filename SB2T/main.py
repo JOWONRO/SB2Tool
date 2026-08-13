@@ -6,7 +6,7 @@ import pythoncom
 from clipboard import copy, paste
 from pyautogui import getAllTitles, getWindowsWithTitle, hotkey
 from PyQt5.QtCore import QSettings, Qt, QTimer, pyqtSlot
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (QAction, QApplication, QCheckBox, QDialog,
                              QFileDialog, QFontDialog, QInputDialog, QLabel,
                              QMainWindow, QMessageBox, QPushButton,
@@ -26,6 +26,7 @@ from SB2T.ps_notify import (install_notifier, read_placeholder_pref,
                             set_placeholder_pref, uninstall_notifier)
 from SB2T.ui_font import make_ui_font
 from SB2T.version import __version__
+from SB2T.resources import icon
 
 
 # =====================================메인 시작===================================
@@ -223,7 +224,7 @@ class MainApp(QMainWindow):
         self.setMainStatusbar()
 
         self.setWindowTitle('식붕이툴 ' + self.version)
-        self.setWindowIcon(QIcon('icons/new_logo.ico'))
+        self.setWindowIcon(icon('new_logo.ico'))
         self.setAcceptDrops(True)
         self.startHotkeyThread()  # 저장된 대사 이동 단축키 등록
         self.show()
@@ -282,7 +283,7 @@ class MainApp(QMainWindow):
         self.advSettings.setShortcut('F2')
 
         # self.psTISsettings = QAction('대사별 문자 설정(&B)', self)
-        # self.psTISsettings.setIcon(QIcon('icons/setpsmode.png'))
+        # self.psTISsettings.setIcon(icon('setpsmode.png'))
         # self.psTISsettings.triggered.connect(self.psTISsettingsDialogShow)
         # self.psTISsettings.setShortcut('Ctrl+T')
         # self.psTISsettings.setDisabled(True)
@@ -425,19 +426,19 @@ class MainApp(QMainWindow):
     def setMainToolbar(self):
         """메인 툴바 생성하는 함수"""
         self.fileOpenAction = QAction(
-            QIcon('icons/open.png'), 'FileOpen', self)
+            icon('open.png'), 'FileOpen', self)
         self.fileOpenAction.setToolTip(
             '파일 열기 ( Ctrl+O )\n복사를 진행할 텍스트 파일을 불러옵니다.\n자동 모드나 포토샵 모드가 켜져 있으면 비활성화됩니다.')
         self.fileOpenAction.triggered.connect(self.showFileDialog)
 
 
         self.setMacroAction = QAction(
-            QIcon('icons/setmacro.png'), 'setMacro', self)
+            icon('setmacro.png'), 'setMacro', self)
         self.setMacroAction.setToolTip('매크로 설정 ( Ctrl+M )\n키보드 매크로를 설정합니다.')
         self.setMacroAction.triggered.connect(self.setMacroDialog)
 
         # self.psTISsettingsAction = QAction(
-        #     QIcon('icons/setpsmode.png'), 'setPSmode', self)
+        #     icon('setpsmode.png'), 'setPSmode', self)
         # self.psTISsettingsAction.setToolTip(
         #     '대사별 문자 설정 (Ctrl+T)\n포토샵 모드 전용 설정으로,\n대사 태그별로 문자 설정을 지정합니다.')
         # self.psTISsettingsAction.triggered.connect(
@@ -445,7 +446,7 @@ class MainApp(QMainWindow):
         # self.psTISsettingsAction.setDisabled(True)
 
         self.autoStartAction = QAction(
-            QIcon("icons/auto.png"), 'AutoMode', self)
+            icon('auto.png'), 'AutoMode', self)
         self.autoStartAction.setToolTip(
             '자동 모드 ( F5 )\n원하는 텍스트를 클릭 시 자동으로\n지정된 프로그램에 붙여넣는 모드입니다.')
         self.autoStartAction.triggered.connect(self.autoStartByToolbar)
@@ -453,7 +454,7 @@ class MainApp(QMainWindow):
         self.autoStartAction.setDisabled(True)
 
         self.ctrlVStartAction = QAction(
-            QIcon("icons/ctrlv.png"), 'CtrlVMode', self)
+            icon('ctrlv.png'), 'CtrlVMode', self)
         self.ctrlVStartAction.setToolTip(
             'Ctrl+V 모드 ( F6 )\nCtrl+V로 붙여넣기 시 자동으로\n다음 문장이 복사되는 모드입니다.')
         self.ctrlVStartAction.triggered.connect(self.ctrlVStartByToolbar)
@@ -461,7 +462,7 @@ class MainApp(QMainWindow):
         self.ctrlVStartAction.setDisabled(True)
 
         self.psAutoStartAction = QAction(
-            QIcon("icons/psmode.png"), 'PSMode', self)
+            icon('psmode.png'), 'PSMode', self)
         self.psAutoStartAction.setToolTip(
             '포토샵 모드 (F7)\n포토샵 전용 붙여넣기 모드로,\n텍스트 레이어 생성 시 자동으로 붙여넣는 모드입니다.')
         self.psAutoStartAction.triggered.connect(self.psAutoStartByToolbar)
@@ -469,37 +470,37 @@ class MainApp(QMainWindow):
         self.psAutoStartAction.setDisabled(True)
 
         self.macroStartAction = QAction(
-            QIcon('icons/macromode.png'), 'Macro', self)
+            icon('macromode.png'), 'Macro', self)
         self.macroStartAction.setToolTip('매크로 모드 (F8)\n키보드 매크로 기능을 실행합니다.')
         self.macroStartAction.triggered.connect(self.macroStartByToolbar)
         self.macroStartAction.setCheckable(True)
 
-        # self.resetRecordAction = QAction(QIcon("icons/record.png"), 'ResetRecord', self)
+        # self.resetRecordAction = QAction(icon('record.png'), 'ResetRecord', self)
         # self.resetRecordAction.setToolTip('기록 초기화 (Del)\n붙여넣기 기록을 모두 초기화합니다.')
         # self.resetRecordAction.triggered.connect(self.resetAllRecord)
         # self.resetRecordAction.setDisabled(True)
 
-        self.linkAction = QAction(QIcon('icons/link.png'), 'SetLink', self)
+        self.linkAction = QAction(icon('link.png'), 'SetLink', self)
         self.linkAction.setToolTip('모든 묶음 활성화 ( Ctrl+L )\n모든 텍스트 묶음을 활성화합니다.')
         self.linkAction.triggered.connect(self.setLinkAll)
         self.linkAction.setDisabled(True)
 
         self.unlinkAction = QAction(
-            QIcon('icons/unlink.png'), 'SetUnlink', self)
+            icon('unlink.png'), 'SetUnlink', self)
         self.unlinkAction.setToolTip(
             '모든 묶음 비활성화 ( Ctrl+U )\n모든 텍스트 묶음을 비활성화합니다.')
         self.unlinkAction.triggered.connect(self.setUnlinkAll)
         self.unlinkAction.setDisabled(True)
 
         self.textFindAction = QAction(
-            QIcon('icons/find.png'), 'TextFind', self)
+            icon('find.png'), 'TextFind', self)
         self.textFindAction.setToolTip('찾기 ( Ctrl+F )\n특정 텍스트를 검색하여 복사합니다.')
         self.textFindAction.triggered.connect(self.textFind)
         self.textFindAction.setDisabled(True)
         self.textfindwindow = QDialog(self)
 
         self.textChangeAction = QAction(
-            QIcon('icons/change.png'), 'TextChange', self)
+            icon('change.png'), 'TextChange', self)
         self.textChangeAction.setToolTip(
             '바꾸기 ( Ctrl+H )\n특정 텍스트를 찾아 원하는 텍스트로 바꿉니다.')
         self.textChangeAction.triggered.connect(self.textChange)
@@ -507,14 +508,14 @@ class MainApp(QMainWindow):
         self.textchangewindow = QDialog(self)
 
         self.threePointChangeAction = QAction(
-            QIcon('icons/chgthrpnt.png'), 'ThreePointChange', self)
+            icon('chgthrpnt.png'), 'ThreePointChange', self)
         self.threePointChangeAction.setToolTip(
             '아래점 바꾸기\n아래점 세 개를 줄임표로 전부 바꿉니다.')
         self.threePointChangeAction.triggered.connect(self.changeThreePoint)
         self.threePointChangeAction.setDisabled(True)
 
         self.goBookmarkAction = QAction(
-            QIcon('icons/bookmark.png'), 'GotoBookmark', self)
+            icon('bookmark.png'), 'GotoBookmark', self)
         self.goBookmarkAction.setToolTip(
             '책갈피 이동 ( Ctrl+B )\n책갈피가 있는 줄로 이동합니다.')
         self.goBookmarkAction.triggered.connect(self.goToBookmark)

@@ -1,6 +1,5 @@
 from pyautogui import position
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QLineEdit, QPushButton,
                              QVBoxLayout)
 
@@ -35,7 +34,7 @@ class SymbolEditDialog(QDialog):
         self.setWindowTitle('특수문자 수정')
         x, y = position()  # 마우스 위치 받기
         self.move(x - 50, y - 50)
-        self.setWindowIcon(QIcon('icons/text.png'))
+        self.setWindowIcon(icon('text.png'))
         self.exec()
 
     def editSymbol(self, e_txt):
@@ -43,3 +42,4 @@ class SymbolEditDialog(QDialog):
         if self.txt != e_txt:
             self.parent.editSymbol(e_txt)
         self.close()
+from SB2T.resources import icon

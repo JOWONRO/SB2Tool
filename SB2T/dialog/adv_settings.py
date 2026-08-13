@@ -9,10 +9,10 @@ from PyQt5.QtWidgets import (
     QGroupBox,
     QSpinBox
 )
-from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 
 from SB2T.constants import CTRLV_DELAY_MAX, CTRLV_DELAY_MIN
+from SB2T.resources import icon
 
 
 class AdvSettingsDialog(QDialog):
@@ -39,7 +39,7 @@ class AdvSettingsDialog(QDialog):
 
         self.setLayout(grid)
         self.setWindowTitle('고급 설정')
-        self.setWindowIcon(QIcon("icons/advset.png"))
+        self.setWindowIcon(icon('advset.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 50, y + 70)
         self.exec()

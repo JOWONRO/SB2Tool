@@ -9,10 +9,10 @@ from PyQt5.QtWidgets import (
     QProgressBar,
     QMessageBox
 )
-from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, pyqtSlot
 
 from SB2T.thread import KeyRead, build_hotkey
+from SB2T.resources import icon
 
 
 NONE_TEXT = '선택 안 함'
@@ -51,7 +51,7 @@ class HotkeyKeyReadDialog(QDialog):
         self.keyThread.start()
         self.keyThread.keyReadSignal.connect(self.keyRead)
 
-        self.setWindowIcon(QIcon('icons/setmacro.png'))
+        self.setWindowIcon(icon('setmacro.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 80, y + 50)
         self.exec()
@@ -117,7 +117,7 @@ class HotkeySetDialog(QDialog):
 
         self.setLayout(grid)
         self.setWindowTitle('대사 이동 단축키 설정')
-        self.setWindowIcon(QIcon('icons/setmacro.png'))
+        self.setWindowIcon(icon('setmacro.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 50, y + 70)
         self.exec()

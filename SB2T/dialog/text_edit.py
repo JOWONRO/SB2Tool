@@ -1,6 +1,5 @@
 from pyautogui import position
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QLineEdit, QPushButton,
                              QVBoxLayout)
 
@@ -31,7 +30,7 @@ class TextEditDialog(QDialog):
 
         self.setLayout(vbox)
         self.setWindowTitle('텍스트 수정')
-        self.setWindowIcon(QIcon('icons/text.png'))
+        self.setWindowIcon(icon('text.png'))
         x, y = position()  # 창 위치 조정
         self.move(x - 50, y - 50)
         self.exec()
@@ -43,3 +42,4 @@ class TextEditDialog(QDialog):
             self.parent.setLine()
             self.parent.parent.recordChange()
         self.close()
+from SB2T.resources import icon

@@ -9,6 +9,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QMenu, QMessageBox, QPushButton
 
 from SB2T.dialog import TextEditDialog
+from SB2T.resources import icon
 
 
 class TextLine(QPushButton):
@@ -59,22 +60,22 @@ class TextLine(QPushButton):
                     self.setText(self.txt[index + 1:])
                     if temp == '대화':
                         self.attribute = 'conversation'
-                        self.setIcon(QIcon('icons/conversation.png'))
+                        self.setIcon(icon('conversation.png'))
                     elif temp == '생각':
                         self.attribute = 'think'
-                        self.setIcon(QIcon('icons/think.png'))
+                        self.setIcon(icon('think.png'))
                     elif temp == '독백':
                         self.attribute = 'narration'
-                        self.setIcon(QIcon('icons/narration.png'))
+                        self.setIcon(icon('narration.png'))
                     elif temp == '강조':
                         self.attribute = 'emphasis'
-                        self.setIcon(QIcon('icons/emphasis.png'))
+                        self.setIcon(icon('emphasis.png'))
                     elif temp == '효과':
                         self.attribute = 'effect'
-                        self.setIcon(QIcon('icons/effect.png'))
+                        self.setIcon(icon('effect.png'))
                     elif temp == '배경':
                         self.attribute = 'background'
-                        self.setIcon(QIcon('icons/background.png'))
+                        self.setIcon(icon('background.png'))
                     else:
                         self.setText(self.txt)
                 except:

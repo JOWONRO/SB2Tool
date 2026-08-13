@@ -5,8 +5,8 @@ from PyQt5.QtWidgets import (
     QGridLayout,
     QLineEdit
 )
-from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
+from SB2T.resources import icon
 
 
 class TextFindDialog(QDialog):
@@ -40,7 +40,7 @@ class TextFindDialog(QDialog):
         self.grid.addWidget(self.resultlbl, 1, 0)
 
         self.setWindowTitle('텍스트 찾기')
-        self.setWindowIcon(QIcon("icons/find.png"))
+        self.setWindowIcon(icon('find.png'))
         self.show()  # 이게 있어야 찾기 창 띄워 놓고 딴 짓 가능
 
         self.textedit.textChanged.connect(self.findit)

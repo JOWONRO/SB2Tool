@@ -4,10 +4,10 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QProgressBar
 )
-from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, pyqtSlot
 
 from SB2T.thread import KeyRead
+from SB2T.resources import icon
 
 
 class KeyReadDialog(QDialog):
@@ -35,7 +35,7 @@ class KeyReadDialog(QDialog):
         self.keyThread.start()
         self.keyThread.keyReadSignal.connect(self.keyRead)
 
-        self.setWindowIcon(QIcon('icons/setmacro.png'))
+        self.setWindowIcon(icon('setmacro.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 80, y + 50)
         self.exec()

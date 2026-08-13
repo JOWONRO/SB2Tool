@@ -5,8 +5,8 @@ from PyQt5.QtWidgets import (
     QGridLayout,
     QLineEdit
 )
-from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
+from SB2T.resources import icon
 
 
 class TextChangeDialog(QDialog):
@@ -50,7 +50,7 @@ class TextChangeDialog(QDialog):
         self.grid.addWidget(self.btn3, 1, 3)
 
         self.setWindowTitle('텍스트 바꾸기')
-        self.setWindowIcon(QIcon('icons/change.png'))
+        self.setWindowIcon(icon('change.png'))
         self.show()  # 이게 있어야 찾기 창 띄워 놓고 딴 짓 가능
 
         self.textedit1.textChanged.connect(self.findit)

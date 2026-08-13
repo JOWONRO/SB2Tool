@@ -8,10 +8,10 @@ from PyQt5.QtWidgets import (
     QLineEdit,
     QGroupBox
 )
-from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 
 from .macro_key_read import KeyReadDialog
+from SB2T.resources import icon
 
 
 class MacroAddDialog(QDialog):
@@ -65,7 +65,7 @@ class MacroAddDialog(QDialog):
                     self.btnA2.setText(temp[4])
             self.setWindowTitle('매크로 수정')
 
-        self.setWindowIcon(QIcon('icons/setmacro.png'))
+        self.setWindowIcon(icon('setmacro.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 30, y + 30)
         self.exec()

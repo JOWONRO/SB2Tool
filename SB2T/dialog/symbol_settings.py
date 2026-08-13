@@ -1,10 +1,10 @@
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QDialog, QGridLayout, QLabel, QListWidget,
                              QPushButton, QVBoxLayout)
 
 from .symbol_add import SymbolAddDialog
 from .symbol_edit import SymbolEditDialog
+from SB2T.resources import icon
 
 
 class SymbolSetDialog(QDialog):
@@ -56,7 +56,7 @@ class SymbolSetDialog(QDialog):
         self.setLayout(grid)
 
         self.setWindowTitle('특수문자 설정')
-        self.setWindowIcon(QIcon('icons/text.png'))
+        self.setWindowIcon(icon('text.png'))
         x, y = self.parent.pos().x(), self.parent.pos().y()  # 창 위치 조정
         self.move(x + 30, y + 120)
         self.exec()

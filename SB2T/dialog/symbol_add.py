@@ -1,6 +1,5 @@
 from pyautogui import position
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QLineEdit, QPushButton,
                              QVBoxLayout)
 
@@ -33,9 +32,10 @@ class SymbolAddDialog(QDialog):
         self.setWindowTitle('특수문자 추가')
         x, y = position()  # 마우스 위치 받기
         self.move(x - 50, y - 50)
-        self.setWindowIcon(QIcon('icons/text.png'))
+        self.setWindowIcon(icon('text.png'))
         self.exec()
 
     def addSymbol(self, txt):
         self.parent.addSymbol(txt)
         self.close()
+from SB2T.resources import icon
