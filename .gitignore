@@ -12,3 +12,6 @@ venv
 
 # 로고 원본(여백 있는 버전). 배포본에 들어갈 필요 없음
 icons/new_logo_original.ico
+
+# 빌드 산출물 (설치파일)
+*_Setup.exe

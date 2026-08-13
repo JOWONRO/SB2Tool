@@ -1,8 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-block_cipher = None
-
-
 a = Analysis(['SB2Tool.py'],
              # 절대경로를 박아두면 다른 PC에서 빌드할 때 깨진다.
              # (5.0 전에는 'D:\coding\git\SB2Tool'로 고정돼 있었다)
@@ -17,12 +14,8 @@ a = Analysis(['SB2Tool.py'],
              hookspath=[],
              runtime_hooks=[],
              excludes=['PIL', 'pandas', 'numpy', 'tcl', 'scipy', 'opencv-python', 'cv2'],
-             win_no_prefer_redirects=False,
-             win_private_assemblies=False,
-             cipher=block_cipher,
              noarchive=False)
-pyz = PYZ(a.pure, a.zipped_data,
-             cipher=block_cipher)
+pyz = PYZ(a.pure, a.zipped_data)
 exe = EXE(pyz,
           a.scripts,
           [],

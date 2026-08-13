@@ -1,8 +1,14 @@
 # 빌드 전용 의존성 (실행에는 불필요)
 # 먼저 requirements.txt 를 설치한 뒤 이걸 설치할 것.
 
-# PyInstaller 6.0부터 onedir 출력 구조가 바뀌어(모든 파일이 _internal\ 하위로 이동)
-# 기존 SB2ToolBeta4.0.nsi 의 파일 경로가 전부 어긋난다.
-# 게다가 SB2Tool.spec 이 쓰는 win_no_prefer_redirects / win_private_assemblies
-# 인자는 6.x에서 제거됐다. 그래서 5.x 마지막 버전으로 고정한다.
-pyinstaller==5.13.2
+# PyInstaller 6부터 onedir 출력 구조가 바뀌었다.
+# 실행 파일만 최상위에 두고 나머지는 전부 _internal\ 아래로 들어간다.
+#
+# 처음에는 4.0의 인스톨러(파일을 하나하나 나열하는 방식)를 살리려고 5.x로
+# 고정했지만, 인스톨러를 File /r 방식으로 새로 쓰면서 레이아웃과 무관해졌다.
+# 그래서 6.x를 쓴다.
+#
+# 다만 4.0이 깔려 있던 자리에 그대로 설치하면 구버전 Qt DLL과 섞여서 죽는다.
+# (4.0은 Qt DLL이 최상위, 5.0은 _internal 아래) 그래서 SB2Tool5.0.nsi는
+# 설치 전에 폴더를 비운다.
+pyinstaller>=6.0,<7.0

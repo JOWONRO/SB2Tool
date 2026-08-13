@@ -85,12 +85,27 @@ FunctionEnd
 
 ; ---------------------------------------------------------------- 설치
 Section "MainSection" SEC01
+  ; 설치 폴더를 먼저 비운다.
+  ;
+  ; 이전 버전이 남긴 파일과 섞이면 실행이 안 된다. 특히 4.0은 PyInstaller 5
+  ; 레이아웃이라 Qt DLL이 최상위에 있었고, 5.0은 _internal\ 아래에 둔다.
+  ; 윈도우는 실행 파일과 같은 폴더를 먼저 뒤지므로, 4.0의 낡은 Qt5Core.dll이
+  ; 남아 있으면 그걸 물고 가서 "지정된 프로시저를 찾을 수 없습니다"로 죽는다.
+  ; 구버전 언인스톨러가 파일을 다 지우지 못하는 경우가 있어 여기서 확실히 한다.
+  ;
+  ; 사용자 설정은 레지스트리(HKCU)에 있으므로 이 작업의 영향을 받지 않는다.
+  RMDir /r "$INSTDIR"
+  CreateDirectory "$INSTDIR"
+
   SetOutPath "$INSTDIR"
-  SetOverwrite ifnewer
+  SetOverwrite on
 
   ; PyInstaller 산출물을 통째로 넣는다.
   ; icons, fonts 도 여기에 포함되어 있다 (SB2Tool.spec의 datas 참고)
-  File /r "dist\SB2Tool\*.*"
+  ;
+  ; 와일드카드가 *.* 이면 확장자 없는 파일(tcl 자료 등 600여 개)이 빠진다.
+  ; 반드시 * 로 둘 것.
+  File /r "dist\SB2Tool\*"
 SectionEnd
 
 Section -AdditionalIcons

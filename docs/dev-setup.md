@@ -64,8 +64,6 @@ python SB2Tool.py
 
 주의:
 
-- **반드시 저장소 루트에서 실행**할 것. 아이콘을 `QIcon("icons/...")` 상대경로로 읽기 때문에
-  다른 폴더에서 띄우면 아이콘이 전부 깨진다.
 - **관리자 권한으로 실행하지 말 것.** 포토샵과 권한(무결성 수준)이 다르면
   COM으로 서로를 찾지 못한다. 실측 결과:
 
@@ -110,20 +108,25 @@ for /d /r . %d in (__pycache__) do @if exist "%d" rd /s /q "%d"
 pyinstaller SB2Tool.spec
 ```
 
-빌드 후 **수동 작업이 남아 있다.** 4.0 배포 때 했던 것들로, 빼먹으면 실행이 안 된다:
+빌드하면 `dist\SB2Tool\` 에 실행 파일과 `_internal\` 폴더가 생긴다.
+아이콘과 글꼴은 `.spec`의 `datas`로 자동 포함되므로 손댈 것이 없다.
+(4.0 때는 아이콘을 손으로 복사해야 했다)
 
-1. **`dist\SB2Tool\icons\` 에 아이콘 복사** — `SB2Tool.spec`의 `datas`가 비어 있어서
-   PyInstaller가 아이콘을 포함하지 않는다. 그런데 `.nsi`는 `dist\SB2Tool\icons\*.png`를
-   참조한다. 즉 손으로 넣어야 한다. *(5.0에서 `datas=[('icons', 'icons')]`로 자동화 예정)*
-2. **`dist\SB2Tool\tcl\dummy.txt`, `dist\SB2Tool\tk\dummy.txt` 생성** — README에 적힌 그 작업.
-   `excludes`에 `tcl`은 있는데 `tkinter`는 안 빠져서, 런타임 훅이 tcl 폴더를 찾다 실패한다.
-   빈 폴더는 PyInstaller가 만들지 않으므로 더미 파일이 필요하다.
-   (라임 님이 제보한 `Tcl data directory not found` 오류의 원인)
+**PyInstaller 6 기준이다.** 5.x와 출력 구조가 다르다.
+- 5.x: 모든 파일이 `dist\SB2Tool\` 최상위
+- 6.x: 실행 파일만 최상위, 나머지는 `dist\SB2Tool\_internal\`
+
+이 차이 때문에 **4.0이 설치된 폴더에 그대로 덮어쓰면 실행이 안 된다.**
+4.0의 Qt DLL이 최상위에 남아 있으면 윈도우가 그걸 먼저 물어서
+`DLL load failed while importing QtCore` 로 죽는다.
+그래서 `SB2Tool5.0.nsi`는 설치 전에 폴더를 통째로 비운다.
 
 그다음 NSIS로 `SB2Tool5.0.nsi` 컴파일.
 
-> 위 1·2번은 `.spec`과 `.nsi`를 보고 역추적한 내용이라, 실제 4.0 빌드 때의 절차와
-> 다를 수 있다. 첫 빌드 때 확인하고 이 문서를 고칠 것.
+```cmd
+"C:\Program Files (x86)\NSIS\makensis.exe" SB2Tool5.0.nsi
+```
+
 
 ---
 
