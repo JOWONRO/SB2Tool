@@ -1,18 +1,61 @@
 # SB2Tool
 
-식붕이툴 전체 코드 및 파일
-
-- backup 폴더 내 파일은 pyinstaller로 식붕이툴을 실행파일로 만들었을 때 생기는 파일들 중, 프로그램 실행에 영향을 끼치지 않아 제외해도 되는 파일들을 모아놓음. 덮어쓰기 후 되돌리기 하면 됨. 이후 tcl과 tk에 dummy.txt 파일 하나씩 둬야 함.
+만화 식자 작업용 복붙 자동화 도구. Windows 전용.
 
 각종 링크들
 
-- 설치파일 다운로드 : <https://www.dropbox.com/s/yw0fqlnrcvr129p/%EC%8B%9D%EB%B6%95%EC%9D%B4%ED%88%B4-Beta4.0_Setup.exe?dl=0>
+- 설치파일 다운로드 : <https://www.dropbox.com/scl/fi/tm6oj1xx28xw4nltc11ch/5.0_Setup.exe?rlkey=3azuk158w6ovgkxwo4pg921uf&st=jrpjcayh&dl=0>
 - 매뉴얼 : <https://docs.google.com/document/d/1Q8_eX5wpb2DEgNo7Lw9LyyRXh7I09aDeYtmQ95-eyAA/edit?usp=sharing>
 - 버그 제보 및 피드백 : <https://docs.google.com/spreadsheets/d/1L4ai00inqZpMqeJuhz7bOCdrWgMTYHEZKl7EXY-nHqM/edit?usp=sharing>
 
 &nbsp;
 
 ## 최근 업데이트 내용 정리
+
+### 5.0
+
+버전 표기를 Beta에서 정식으로 바꿨습니다.
+
+**Ctrl+V 모드 안정화** (나나, ㅇㅇ 님 제보)
+
+- 대사가 씹히거나 건너뛰어지던 문제 수정. 원인은 Ctrl 키가 아니라, 대상
+  프로그램이 클립보드를 읽기 전에 다음 대사로 덮어쓰던 타이밍 문제였습니다.
+- 키를 누르고 있을 때 여러 줄이 한꺼번에 넘어가던 문제 수정
+- 오른쪽 Ctrl+V가 인식되지 않던 문제 수정
+- 고급 설정에 대기시간 추가. 붙여넣기가 느린 프로그램은 값을 올리면 됩니다.
+
+**대사 이동 단축키 추가** (나나, ㅇㅇ 님 요청)
+
+- 다음/이전 대사, 현재 대사 다시 복사를 원하는 키에 지정할 수 있습니다.
+  설정 > 대사 이동 단축키 설정 (Ctrl+K)
+- 두 키 조합 지원. 다른 프로그램에 있어도 동작합니다.
+- Ctrl+V 모드와 같이 쓸 수 있어서, Ctrl+V를 다른 용도로 써야 할 때 유용합니다.
+
+**포토샵 모드 개선** (ㅇㅋ, 전가의보도, 라임 님 제보)
+
+- 새 텍스트 레이어 감지를 포토샵 알림 기반으로 교체. 기존 레이어를 수정할
+  때는 반응하지 않습니다.
+- 자리 표시자 텍스트 옵션이 꺼져 있으면 안내하고 바로 켜줍니다.
+- 프로그램 지정 시 수십 초 멈추던 문제 해결. 포토샵 연결은 모드를 켤 때만 합니다.
+- 연결 실패 시 원인을 알려줍니다. 포토샵과 식붕이툴의 권한(관리자 여부)이
+  다르면 서로를 찾지 못하는데, 이 경우를 짚어줍니다.
+- 고급 설정에 '포토샵 연동 사용' 추가. 포토샵을 쓰지 않으면 꺼두면 됩니다.
+- 포토샵 2026까지 동작 확인
+
+**프로그램 지정 단계 제거**
+
+- '프로그램 지정' 메뉴가 없어졌습니다. 텍스트만 불러오면 모든 모드를 켤 수
+  있고, 자동 모드를 켤 때 지정 창이 뜹니다.
+
+**그 밖에**
+
+- 새 로고
+- 기본 글꼴을 Pretendard로 변경. 설치하지 않아도 됩니다.
+- 편집 메뉴의 붙여넣기(S)와 건너뛰기(A/D/Ctrl+A/Ctrl+D) 삭제.
+  대사 이동 단축키가 대신합니다.
+- 구버전이 설치된 상태에서 새로 설치해도 문제가 없도록 인스톨러 개선
+
+기존 설정(매크로, 특수문자, 고급 설정)은 그대로 유지됩니다.
 
 ### Public으로 전환(2024-05-15)
 
@@ -62,12 +105,11 @@
 - 책갈피 기능 추가 -> 한 개 책갈피만 가능, 책갈피가 있는 파일을 불러올 경우 자동으로 책갈피가 있는 라인으로 이동.
 - 종료 확인창 삭제
 
-## pip install
+## 개발 환경
 
-- pyqt5
-- psutil
-- pywin32
-- keyboard
-- pyautogui
-- clipboard
-- photoshop_python_api
+```
+pip install -r requirements.txt
+pip install -r requirements-build.txt   # 빌드할 때만
+```
+
+환경 구성과 빌드 절차는 [docs/dev-setup.md](docs/dev-setup.md) 참고.
